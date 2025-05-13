@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國定假日調移休假員工同意資料簽名表</title>
+    <link rel="shortcut icon" href="/icon" type="image/x-icon">
+    <style>
+        table, th, td { border: 1px solid black; border-collapse: collapse; padding: 6px; background: white; }
+        canvas { border: 1px solid #000; background: white; }
+        img.signature { height: 50px; }
+    </style>
+</head>
+<body>
+    <h1>上傳檔案</h1>
+    <form action="/upload_original_data" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">上傳</button>
+    </form>
+    <h2>下載簽名檔</h2>
+    <form action="/download_latest_excel" method="get">
+        <button type="submit">下載簽名檔</button>
+    </form>
+    <h3>清除簽名檔</h3>
+    <button onclick="deletimage()" style="margin-bottom: 10px;">清除簽名檔</button>
+    
+    <script>
+        function deletimage() {
+            fetch('/deletimage', {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('所有簽名檔已清除！');
+            });
+        }
+
+    </script>
+</body>
+</html>

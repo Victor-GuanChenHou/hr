@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國定假日調移休假員工同意資料簽名表</title>
+    <link rel="shortcut icon" href="/icon" type="image/x-icon">
+    <style>
+        table, th, td { border: 1px solid black; border-collapse: collapse; padding: 6px; background: white; }
+        canvas { border: 1px solid #000; background: white; }
+        img.signature { height: 50px; }
+    </style>
+</head>
+<body>
+    <h1>國定假日調移休假員工同意資料簽名表</h1>
+    <!-- <button onclick="saveAll()" style="margin-bottom: 10px;">儲存全部</button> -->
+    <table>
+        <thead>
+            <tr>
+                {% for col in tables[0].keys() if col != 'signature' %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+                <th>簽名</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in tables %}
+            <tr id="row-{{ loop.index0 }}">
+                {% for key, value in row.items() if key != 'signature' %}
+                    <td>{{ value }}</td>
+                {% endfor %}
+                <td>
+                    {% if row.signature %}
+                        <img src="{{ row.signature }}" class="signature">
+                    {% else %}
+                        <button onclick="openSignaturePad({{ loop.index0 }})">簽名</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+
+    <div id="signatureModal" style="display:none; position:fixed; top:10%; left:20%; background:#fff; padding:20px; border:1px solid #000;">
+        <p>請簽名：</p>
+        <canvas id="signaturePad" width="350" height="150"></canvas><br>
+        <button onclick="saveSignature()">儲存</button>
+        <button onclick="closeSignaturePad()">關閉</button>
+    </div>
+
+    <script>
+        let currentRow = null;
+        const canvas = document.getElementById('signaturePad');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        // 針對觸控事件的處理
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // 防止滑動頁面
+            drawing = true;
+            ctx.beginPath();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        });
+
+        canvas.addEventListener('touchend', () => drawing = false);
+        canvas.addEventListener('touchmove', draw);
+
+        // 針對滑鼠事件的處理（為了桌面端瀏覽器兼容）
+        canvas.addEventListener('mousedown', (e) => {
+            drawing = true;
+            ctx.beginPath();
+            const rect = canvas.getBoundingClientRect();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('mousemove', draw);
+
+        function draw(e) {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            let x, y;
+
+            // 處理觸控事件
+            if (e.touches) {
+                const touch = e.touches[0];
+                x = touch.clientX - rect.left;
+                y = touch.clientY - rect.top;
+            } else {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function openSignaturePad(row) {
+            currentRow = row;
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // 清空畫布
+            document.getElementById('signatureModal').style.display = 'block';
+        }
+
+        function closeSignaturePad() {
+            document.getElementById('signatureModal').style.display = 'none';
+        }
+
+        function saveSignature() {
+            // 建立白底畫布
+            const whiteCanvas = document.createElement('canvas');
+            whiteCanvas.width = canvas.width;
+            whiteCanvas.height = canvas.height;
+            const whiteCtx = whiteCanvas.getContext('2d');
+
+            // 填白底後再畫簽名上去
+            whiteCtx.fillStyle = "#FFFFFF";
+            whiteCtx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
+            whiteCtx.drawImage(canvas, 0, 0);
+
+            // 將圖像轉為 base64 傳送
+            const dataURL = whiteCanvas.toDataURL("image/png");
+
+            fetch('/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ row: currentRow, signature: dataURL })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const rowElem = document.getElementById('row-' + currentRow);
+                const td = rowElem.querySelector('td:last-child');
+                td.innerHTML = `<img src="${data.file}" class="signature">`;
+                closeSignaturePad();
+            });
+        }
+
+        // 儲存所有簽名
+        function saveAll() {
+            fetch('/saveall', {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('所有簽名已儲存！');
+            });
+        }
+    </script>
+
+</body>
+</html>
