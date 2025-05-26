@@ -2,8 +2,10 @@ import pyodbc
 import pandas as pd
 from openpyxl import load_workbook
 from dotenv import load_dotenv
+from datetime import datetime
 import os
 ENV = './.env' 
+LOG_DIR='logs'
 load_dotenv(dotenv_path=ENV)
 def get_user_info(username):
     load_dotenv()
@@ -67,4 +69,13 @@ def read_excel_compatible(filepath):
 
         except Exception as e2:
             raise RuntimeError(f"openpyxl 解析也失敗: {e2}")
-print(get_user_info('A14176'))
+def loglogin(username,ip):
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+    today = datetime.today().strftime('%Y-%m-%d')
+    log_file = os.path.join(LOG_DIR, f'{today}.log')
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_line = f'{now} | 使用者 {username} 從 {ip} 登入\n'
+    
+    with open(log_file, 'a', encoding='utf-8') as f:
+        f.write(log_line)
