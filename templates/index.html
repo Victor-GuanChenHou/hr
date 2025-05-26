@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>國定假日調移休假員工同意資料簽名表</title>
+    <link rel="shortcut icon" href="/icon" type="image/x-icon" />
+    <style>
+        body {
+            margin: 0;
+            background: rgba(53, 35, 73, 0.1);
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+        .navbar {
+            display: flex;
+            align-items: center;
+            background: rgba(53, 35, 73, 1);
+            color: white;
+            padding: 10px 20px;
+        }
+        .navbar img.logo {
+            height: 60px;
+            margin-right: 40px;
+        }
+        .nav-links {
+            display: flex;
+            flex: 1;
+            gap: 40px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .user-info {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .user-icon {
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #214647;
+            font-size: 20px;
+        }
+        .name {
+            font-size: 18px;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            color: #214647;
+            min-width: 100px;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .dropdown-content a {
+            display: block;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #214647;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+        }
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        .dropdown-content a:hover {
+            background-color: #f0f0f0;
+        }
+        .user-info.show .dropdown-content {
+            display: block;
+        }
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 6px;
+            background: white;
+        }
+        canvas {
+            border: 1px solid #000;
+            background: white;
+        }
+        img.signature {
+            height: 50px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <a href="{{ url_for('home') }}">
+    <img src="/static/img/logo.png" alt="Kingza Logo" class="logo" />
+    </a>
+    
+    <div class="nav-links">
+        <a href="/home/sing">國定假日調移簽名</a>
+    </div>
+    <div class="user-info" onclick="toggleDropdown()">
+        <div class="user-icon">👤</div>
+        <div class="name">{{ name }}</div>
+        <div class="dropdown-content">
+            <a href="{{ url_for('logout') }}">登出</a>
+        </div>
+    </div>
+</div>
+
+
+
+{% if tables %}
+<table style="width: 95%; margin: auto;">
+    <thead>
+        <tr>
+            {% for col in tables[0].keys() if col != 'signature' %}
+                <th>{{ col }}</th>
+            {% endfor %}
+            <th>簽名</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in tables %}
+        <tr id="row-{{ loop.index0 }}">
+            {% for key, value in row.items() if key != 'signature' %}
+                <td>{{ value }}</td>
+            {% endfor %}
+            <td>
+                {% if row.signature %}
+                    <img src="{{ row.signature }}" class="signature" />
+                {% else %}
+                    <button onclick="openSignaturePad({{ loop.index0 }})">簽名</button>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="text-align:center; margin-top: 50px; font-size: 18px; color: red;">
+    尚無需簽名資料。
+</p>
+{% endif %}
+
+<div id="signatureModal" style="display:none; position:fixed; top:10%; left:20%; background:#fff; padding:20px; border:1px solid #000; z-index:10000;">
+    <p>請簽名：</p>
+    <canvas id="signaturePad" width="350" height="150"></canvas><br />
+    <button onclick="saveSignature()">儲存</button>
+    <button onclick="closeSignaturePad()">關閉</button>
+</div>
+
+<script>
+    function toggleDropdown() {
+        document.querySelector('.user-info').classList.toggle('show');
+    }
+    window.addEventListener('click', function(event) {
+        const userInfo = document.querySelector('.user-info');
+        if (!userInfo.contains(event.target)) {
+            userInfo.classList.remove('show');
+        }
+    });
+
+    let currentRow = null;
+    const canvas = document.getElementById('signaturePad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        drawing = true;
+        ctx.beginPath();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    });
+
+    canvas.addEventListener('touchend', () => drawing = false);
+    canvas.addEventListener('touchmove', draw);
+
+    canvas.addEventListener('mousedown', (e) => {
+        drawing = true;
+        ctx.beginPath();
+        const rect = canvas.getBoundingClientRect();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mousemove', draw);
+
+    function draw(e) {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        let x, y;
+
+        if (e.touches) {
+            const touch = e.touches[0];
+            x = touch.clientX - rect.left;
+            y = touch.clientY - rect.top;
+        } else {
+            x = e.clientX - rect.left;
+            y = e.clientY - rect.top;
+        }
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+
+    function openSignaturePad(row) {
+        currentRow = row;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('signatureModal').style.display = 'block';
+    }
+
+    function closeSignaturePad() {
+        document.getElementById('signatureModal').style.display = 'none';
+    }
+
+    function saveSignature() {
+        const whiteCanvas = document.createElement('canvas');
+        whiteCanvas.width = canvas.width;
+        whiteCanvas.height = canvas.height;
+        const whiteCtx = whiteCanvas.getContext('2d');
+
+        whiteCtx.fillStyle = "#FFFFFF";
+        whiteCtx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
+        whiteCtx.drawImage(canvas, 0, 0);
+
+        const dataURL = whiteCanvas.toDataURL("image/png");
+
+        fetch('/sign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ row: currentRow, signature: dataURL })
+        })
+        .then(res => res.json())
+        .then(data => {
+            const rowElem = document.getElementById('row-' + currentRow);
+            const td = rowElem.querySelector('td:last-child');
+            td.innerHTML = `<img src="${data.file}" class="signature">`;
+            closeSignaturePad();
+        });
+    }
+</script>
+
+</body>
+</html>
