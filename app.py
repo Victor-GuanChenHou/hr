@@ -10,6 +10,11 @@ import shutil
 import json
 import sub as sub
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+ENV = './.env' 
+load_dotenv(dotenv_path=ENV)
+SEC_KEY = os.getenv('SEC_KEY')
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
 
@@ -17,6 +22,7 @@ UPLOAD_FOLDER = 'uploads'
 SIGNATURE_FOLDER = 'static/signatures'
 HISTORY_FOLDER='history'
 TEMP='temp'
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SIGNATURE_FOLDER'] = SIGNATURE_FOLDER
 app.config['TEMP'] = TEMP
@@ -42,7 +48,9 @@ def login():
         username = request.form['username']
         password = request.form['password']
         user_info = sub.get_user_info(username)
+        user_ip = request.remote_addr
         if user_info and (user_info['password'] == password or user_info['password'] != password):
+            
             # with open('allowdept.json', 'r', encoding='utf-8') as f:
             #     config = json.load(f)
             # allow_dept = set(config.get('allowdept', []))
@@ -58,6 +66,8 @@ def login():
             session['name'] = user_info['name']
             session['dept_no']=user_info['DEPT_NO']
             session['dept_name']=user_info['DEPT_NAME']
+            user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            sub.loglogin(session['username'],user_ip)
             return redirect(url_for('home'))
         else:
             return render_template('login.html', error='登入失敗，帳號或密碼錯誤')
