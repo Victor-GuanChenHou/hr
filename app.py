@@ -16,7 +16,7 @@ ENV = './.env'
 load_dotenv(dotenv_path=ENV)
 SEC_KEY = os.getenv('SEC_KEY')
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
+app.secret_key = SEC_KEY
 
 UPLOAD_FOLDER = 'uploads'
 SIGNATURE_FOLDER = 'static/signatures'
