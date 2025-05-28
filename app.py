@@ -360,4 +360,4 @@ def get_signed_data():
     return jsonify(data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=327)
+    app.run(host='0.0.0.0', port=4275)
