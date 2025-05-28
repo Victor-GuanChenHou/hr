@@ -64,13 +64,13 @@
 <body>
     <div class="login-container">
         <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo">
-        <h2 style="color: white;">登入系統</h2>
+        <h2 style="color: white;">人資簽核登入系統</h2>
         {% if error %}
             <p class="error">{{ error }}</p>
         {% endif %}
         <form method="post">
-            <input type="text" name="username" value="A14176" placeholder="帳號"><br>
-            <input type="password" name="password" value="" id="password" placeholder="密碼"><br>
+            <input type="text" name="username" value="" placeholder="工號"><br>
+            <input type="password" name="password" value="" id="password" placeholder="身分證字號(英文大寫)"><br>
             <div class="checkbox">
                 <input type="checkbox" id="showPwd" onclick="togglePassword()">
                 <label for="showPwd" style="color: white;">顯示密碼</label>
