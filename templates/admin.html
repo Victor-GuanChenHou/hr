@@ -429,7 +429,7 @@
 
             const form = e.target;
             const formData = new FormData(form);
-
+            document.getElementById('loadingSpinner').style.display = 'block';
             fetch(form.action, {
                 method: 'POST',
                 body: formData
@@ -441,22 +441,36 @@
                 });
             })
             .then(({ ok, data }) => {
+                // 隱藏 loading spinner
+                document.getElementById('loadingSpinner').style.display = 'none';
+
+                const messageEl = document.getElementById('message');
+                messageEl.style.display = 'block';
+
                 if (ok && data.success) {
-                    alert(data.message);
-                    form.reset();
-                    closeUploadModal();
-                    location.reload();
+                messageEl.style.backgroundColor = '#d4edda'; // 綠色
+                messageEl.style.color = '#155724';
+                messageEl.textContent = data.message;
+                form.reset();
+                closeUploadModal();
+                location.reload(); // 如果還是想 reload 頁面
                 } else {
-                   
-                    alert('錯誤：' + (data.error || '未知錯誤'));
-                    form.reset();
-                    closeUploadModal();
-                    location.reload();
+                messageEl.style.backgroundColor = '#f8d7da'; // 紅色
+                messageEl.style.color = '#721c24';
+                messageEl.textContent = '錯誤：' + (data.error || '未知錯誤');
+                form.reset();
+                closeUploadModal();
                 }
             })
             .catch(error => {
-                console.error(error);
-                alert('發生錯誤：' + error.message);
+                // 隱藏 loading spinner
+                document.getElementById('loadingSpinner').style.display = 'none';
+
+                const messageEl = document.getElementById('message');
+                messageEl.style.display = 'block';
+                messageEl.style.backgroundColor = '#f8d7da';
+                messageEl.style.color = '#721c24';
+                messageEl.textContent = '發生錯誤：' + error.message;
             });
         });
         </script>
@@ -533,5 +547,10 @@
 
     </style>
 </div>
+<div id="loadingSpinner" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+     z-index: 20000; color: white; font-size: 24px; background: rgba(0,0,0,0.6); padding: 20px 30px; border-radius: 8px;">
+  上傳中，請稍候...
+</div>
+<div id="message" style="display: none; margin: 10px; padding: 10px; border-radius: 6px; font-weight: bold;"></div>
 </body>
 </html>
