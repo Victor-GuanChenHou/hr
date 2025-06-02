@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from datetime import datetime
 import os
 import sys
 ENV = './.env' 
@@ -56,15 +57,26 @@ try:
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(host, port, username, password)
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f'{now} | 連線成功\n')
 except:
     sys.exit()
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f'{now} | 連線失敗\n')
 # 創建SFTP客戶端
+
 sftp = ssh.open_sftp()
 sftp.chdir("hrm_signature")
 NAS_filelist = sftp.listdir()
 LOC_file_list = os.listdir(HISTORY_FOLDER)
 # # 上傳檔案
-upload(HISTORY_FOLDER,"",sftp)
+try:
+    upload(HISTORY_FOLDER,"",sftp)
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f'{now} | 上傳成功\n')
+except:
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f'{now} | 上傳失敗\n')
 # 關閉
 sftp.close()
 ssh.close()
