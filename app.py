@@ -168,6 +168,8 @@ def upload_original_data():
         filtered_df = filtered_df.reset_index(drop=True)
         if filtered_df.empty:
             return jsonify({"success": False, "error": "沒有符合條件的資料！"}), 400
+        else:
+            filtered_df['主管'] = filtered_df['員工編號'].apply(lambda emp_id: sub.find_deptchie(emp_id))
         save_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     except:
         return jsonify({"success": False, "error": "沒有符合條件的資料！"}), 400

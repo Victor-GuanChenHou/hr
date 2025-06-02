@@ -79,3 +79,35 @@ def loglogin(username,ip):
     
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(log_line)
+def find_deptchie(username):
+    load_dotenv()
+    HRDB_host = os.getenv('HRDB_host')
+    HRDB_password = os.getenv('HRDB_password')
+    HRDB_uid=os.getenv('HRDB_uid')
+    HRDB_name=os.getenv('HRDB_name')
+    conn = pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={HRDB_host};"
+        f"DATABASE={HRDB_name};"
+        f"UID={HRDB_uid};"
+        f"PWD={HRDB_password};"
+        "Trusted_Connection=no;"
+    )
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT CHIEF.EMAIL
+        FROM HRM.dbo.HRUSER EMP
+        JOIN HRM.dbo.HRUSER_DEPT_BAS DEPT
+            ON EMP.DEPT_NO = DEPT.DEP_NO
+        JOIN HRM.dbo.HRUSER CHIEF
+            ON DEPT.DEP_CHIEF = CHIEF.EMPID
+        WHERE EMP.EMPID = ?
+    """, (username,))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if result:
+        return result[0]
+    else:
+        return None
