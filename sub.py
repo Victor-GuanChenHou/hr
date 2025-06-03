@@ -94,16 +94,22 @@ def find_deptchie(username):
         "Trusted_Connection=no;"
     )
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT CHIEF.EMAIL
-        FROM HRM.dbo.HRUSER EMP
-        JOIN HRM.dbo.HRUSER_DEPT_BAS DEPT
-            ON EMP.DEPT_NO = DEPT.DEP_NO
-        JOIN HRM.dbo.HRUSER CHIEF
-            ON DEPT.DEP_CHIEF = CHIEF.EMPID
-        WHERE EMP.EMPID = ?
-    """, (username,))
+    cursor.execute("SELECT DEPT_NO FROM HRM.dbo.HRUSER WHERE EMPID = ?", (username,))
     result = cursor.fetchone()
+    if result[0]=='193':#判斷是否是央廚(央廚特別處理不抓上司MAIL)
+        result='dcz01@kingza.com.tw'
+        return result
+    else:
+        cursor.execute("""
+            SELECT CHIEF.EMAIL
+            FROM HRM.dbo.HRUSER EMP
+            JOIN HRM.dbo.HRUSER_DEPT_BAS DEPT
+                ON EMP.DEPT_NO = DEPT.DEP_NO
+            JOIN HRM.dbo.HRUSER CHIEF
+                ON DEPT.DEP_CHIEF = CHIEF.EMPID
+            WHERE EMP.EMPID = ?
+        """, (username,))
+        result = cursor.fetchone()
     cursor.close()
     conn.close()
 
