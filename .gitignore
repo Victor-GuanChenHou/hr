@@ -1,6 +1,7 @@
-# 忽略 .env 檔案
-.env
-.lon
-# 或者忽略所有 .env 開頭的檔案
-.env*
-.log*
+*.env
+*.log
+*.xlsx
+*.log
+*.png
+*.pyc
+
