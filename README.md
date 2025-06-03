@@ -153,7 +153,7 @@ crontab -e
 
 ![Admin1.png](Readmeimg/Admin1.png)
 
-![Admin2.png](Readmeimg/Admin.png)
+![Admin2.png](Readmeimg/Admin2.png)
 
 ### 5.Others
 
