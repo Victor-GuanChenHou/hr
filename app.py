@@ -49,26 +49,29 @@ def login():
         password = request.form['password']
         user_info = sub.get_user_info(username)
         user_ip = request.remote_addr
-        if user_info and (user_info['password'] == password ):
+        if user_info and user_info['password'] == password :
+            if( user_info['CLASS']=='D' or user_info['DEPT_NO']=='139' or user_info['DEPT_NO']=='452') :
             
-            # with open('allowdept.json', 'r', encoding='utf-8') as f:
-            #     config = json.load(f)
-            # allow_dept = set(config.get('allowdept', []))
-            # if user_info['DEPT_NO'] in allow_dept or user_info['DEPT_KIND'] in allow_dept:
-            #     session['username'] = user_info['username']
-            #     session['name'] = user_info['name']
-            #     session['dept_no']=user_info['DEPT_NO']
-            #     session['dept_name']=user_info['DEPT_NAME']
-            #     return redirect(url_for('home'))
-            # else:
-            #     return render_template('login.html', error='，帳號或密碼錯誤')
-            session['username'] = user_info['username']
-            session['name'] = user_info['name']
-            session['dept_no']=user_info['DEPT_NO']
-            session['dept_name']=user_info['DEPT_NAME']
-            user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-            sub.loglogin(session['username'],user_ip)
-            return redirect(url_for('home'))
+                # with open('allowdept.json', 'r', encoding='utf-8') as f:
+                #     config = json.load(f)
+                # allow_dept = set(config.get('allowdept', []))
+                # if user_info['DEPT_NO'] in allow_dept or user_info['DEPT_KIND'] in allow_dept:
+                #     session['username'] = user_info['username']
+                #     session['name'] = user_info['name']
+                #     session['dept_no']=user_info['DEPT_NO']
+                #     session['dept_name']=user_info['DEPT_NAME']
+                #     return redirect(url_for('home'))
+                # else:
+                #     return render_template('login.html', error='，帳號或密碼錯誤')
+                session['username'] = user_info['username']
+                session['name'] = user_info['name']
+                session['dept_no']=user_info['DEPT_NO']
+                session['dept_name']=user_info['DEPT_NAME']
+                user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                sub.loglogin(session['username'],user_ip)
+                return redirect(url_for('home'))
+            else:
+                return render_template('login.html', error='無權限請洽管理員')
         else:
             return render_template('login.html', error='登入失敗，帳號或密碼錯誤')
     return render_template('login.html')

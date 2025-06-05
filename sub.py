@@ -23,7 +23,7 @@ def get_user_info(username):
     )
     cursor = conn.cursor()
     # SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID 身分證後九碼
-    cursor.execute("SELECT EMPID, SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID, HECNAME ,DEPT_NO FROM HRM.dbo.HRUSER WHERE EMPID = ?", (username,))
+    cursor.execute("SELECT EMPID, SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID, HECNAME ,DEPT_NO ,CLASS FROM HRM.dbo.HRUSER WHERE EMPID = ?", (username,))
     row = cursor.fetchone()
     
 
@@ -32,9 +32,9 @@ def get_user_info(username):
         dep_row = cursor.fetchone()
         conn.close()
         if dep_row:
-            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'DEPT_NAME':dep_row[0],'DEPT_KIND':dep_row[1]}
+            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'CLASS':row[4],'DEPT_NAME':dep_row[0],'DEPT_KIND':dep_row[1]}
         else:
-            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'DEPT_NAME':'NOT FOUND','DEPT_KIND':'NOT FOUND'}
+            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'CLASS':row[4],'DEPT_NAME':'NOT FOUND','DEPT_KIND':'NOT FOUND'}
     else:
         return None
 
