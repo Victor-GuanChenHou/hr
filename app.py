@@ -308,6 +308,7 @@ def download_latest_excel():
     ws_unsigned.column_dimensions['D'].width = 25
     ws_unsigned.column_dimensions['E'].width = 15
     ws_unsigned.column_dimensions['F'].width = 10
+    ws_unsigned.column_dimensions['G'].width = 15
     ############已簽名資料匯出欄寬######################
     ws_signed.column_dimensions['A'].width = 25
     ws_signed.column_dimensions['B'].width = 10
@@ -315,6 +316,7 @@ def download_latest_excel():
     ws_signed.column_dimensions['D'].width = 25
     ws_signed.column_dimensions['E'].width = 15
     ws_signed.column_dimensions['F'].width = 10
+    ws_signed.column_dimensions['G'].width = 15
     ############全部資料匯出欄寬######################
     ws_all.column_dimensions['A'].width = 25
     ws_all.column_dimensions['B'].width = 10
@@ -322,6 +324,7 @@ def download_latest_excel():
     ws_all.column_dimensions['D'].width = 25
     ws_all.column_dimensions['E'].width = 15
     ws_all.column_dimensions['F'].width = 10
+    ws_all.column_dimensions['G'].width = 15
     # 儲存檔案
     if not os.path.exists(app.config['TEMP']):
         os.makedirs(app.config['TEMP'])
