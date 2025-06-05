@@ -49,7 +49,7 @@ def login():
         password = request.form['password']
         user_info = sub.get_user_info(username)
         user_ip = request.remote_addr
-        if user_info and (user_info['password'] == password or user_info['password'] != password):
+        if user_info and (user_info['password'] == password ):
             
             # with open('allowdept.json', 'r', encoding='utf-8') as f:
             #     config = json.load(f)
