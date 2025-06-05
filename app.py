@@ -301,7 +301,27 @@ def download_latest_excel():
             else:
                 # 3. 未簽名
                 ws_unsigned.append(row_data)
-
+    ############未簽名資料匯出欄寬######################
+    ws_unsigned.column_dimensions['A'].width = 25
+    ws_unsigned.column_dimensions['B'].width = 10
+    ws_unsigned.column_dimensions['C'].width = 10
+    ws_unsigned.column_dimensions['D'].width = 25
+    ws_unsigned.column_dimensions['E'].width = 15
+    ws_unsigned.column_dimensions['F'].width = 10
+    ############已簽名資料匯出欄寬######################
+    ws_signed.column_dimensions['A'].width = 25
+    ws_signed.column_dimensions['B'].width = 10
+    ws_signed.column_dimensions['C'].width = 10
+    ws_signed.column_dimensions['D'].width = 25
+    ws_signed.column_dimensions['E'].width = 15
+    ws_signed.column_dimensions['F'].width = 10
+    ############全部資料匯出欄寬######################
+    ws_all.column_dimensions['A'].width = 25
+    ws_all.column_dimensions['B'].width = 10
+    ws_all.column_dimensions['C'].width = 10
+    ws_all.column_dimensions['D'].width = 25
+    ws_all.column_dimensions['E'].width = 15
+    ws_all.column_dimensions['F'].width = 10
     # 儲存檔案
     if not os.path.exists(app.config['TEMP']):
         os.makedirs(app.config['TEMP'])
