@@ -22,7 +22,8 @@ def get_user_info(username):
         "Trusted_Connection=no;"
     )
     cursor = conn.cursor()
-    cursor.execute("SELECT EMPID, UIDENTID, HECNAME ,DEPT_NO FROM HRM.dbo.HRUSER WHERE EMPID = ?", (username,))
+    # SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID 身分證後九碼
+    cursor.execute("SELECT EMPID, SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID, HECNAME ,DEPT_NO FROM HRM.dbo.HRUSER WHERE EMPID = ?", (username,))
     row = cursor.fetchone()
     
 
