@@ -6,3 +6,5 @@
 *.pyc
 test.py
 *pdf
+*.doc
+mailserver.py
