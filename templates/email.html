@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>部門資料維護</title>
+    <link rel="shortcut icon" href="/icon" type="image/x-icon">
+    <style>
+        body {
+            margin: 0;
+            background: rgba(53, 35, 73, 0.1);  
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+        .navbar {
+            display: flex;
+            align-items: center;
+            background: rgba(53, 35, 73, 1);
+            color: white;
+            padding: 10px 20px;
+        }
+        .navbar img.logo {
+            height: 60px;
+            margin-right: 40px;
+        }
+        .nav-links {
+            display: flex;
+            flex: 1;
+            gap: 40px;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .user-info {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+            margin-left: auto;
+        }
+        .publicholiday-info {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .user-icon {
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #214647;
+            font-size: 20px;
+        }
+        .username {
+            font-size: 18px;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            color: #214647;
+            min-width: 100px;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .dropdown-content a {
+            display: block;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #214647;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+        }
+        .dropdown-content a:last-child {
+            border-bottom: none;
+        }
+        .dropdown-content a:hover {
+            background-color: #f0f0f0;
+        }
+        /* 顯示下拉 */
+        .user-info.show .dropdown-content {
+            display: block;
+        }
+        .publicdropdown-content {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            color: #214647;
+            min-width: 200px;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .publicdropdown-content a {
+            display: block;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #214647;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+            font-size: 16px;
+        }
+        .publicdropdown-content a:hover {
+            background-color: #f0f0f0;
+        }
+        .publicholiday-info.show .publicdropdown-content {
+            display: block;
+        }
+        .editdeletdropdown-content {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            color: #214647;
+            min-width: 200px;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .editdeletdropdown-content a {
+            display: block;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #214647;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+            font-size: 16px;
+        }
+        .editdeletdropdown-content a:hover {
+            background-color: #f0f0f0;
+        }
+        .editdeletdropdown-info.show .e-content {
+            display: block;
+        }
+        .name {
+            font-size: 18px;
+        }
+        .container {
+            padding: 30px;
+        }
+
+        h2 {
+            color: #352349;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"],
+        input[type="email"] {
+            padding: 8px;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .sign-button {
+            padding: 4px 8px;
+            background-color: #562d7b;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 6px;
+            background: white;
+            text-align: center;
+        }
+        .add-btn {
+            height: 40px;
+            padding: 0 20px;
+            font-size: 16px;
+            background-color: #352349;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 24px;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .add-btn:hover {
+            background-color: #4b3566;
+        }
+        .filter-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin: 20px auto;
+            width: 95%;
+        }
+        .left-group, .right-group {
+            align-items: flex-end;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .search-wrapper{
+            display: flex;
+            flex-direction: column;
+            font-family: "Microsoft JhengHei", sans-serif;
+            font-size: 16px;
+            color: #4b5563;
+        }
+        .search-wrapper input {
+            padding: 8px 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .search-wrapper label {
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #374151;
+        }
+       .search-wrapper select {
+            appearance: none;
+            padding: 10px 12px;
+            font-size: 16px;
+            width: 150px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background-color: #fff;
+            color: #374151;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23374151' stroke-width='2'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s ease-in-out;
+        }
+
+        .search-wrapper select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+        
+
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <a href="{{ url_for('home') }}">
+            <img src="/static/img/logo.png" alt="Kingza Logo" class="logo" />
+        </a>
+
+        <div class="nav-links">
+            <div class="publicholiday-info" onclick="publicholiday()">
+                <div class="name">國定假日調移簽名</div>
+                <div class="publicdropdown-content">
+                    <a href="{{ url_for('index') }}">國定假日調移簽名查詢</a>
+                    <a href="{{ url_for('email') }}">部門資料維護</a>
+                    <a href="{{ url_for('historysearch') }}">歷史資料查詢</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-info" onclick="toggleDropdown()">
+            <div class="user-icon">👤</div>
+            <div class="name">{{ name }}</div>
+            <div class="dropdown-content">
+                <a href="{{ url_for('logout') }}">登出</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="left-group">
+            <div class="search-wrapper">
+                <label for="search">搜尋品牌：</label>
+                <select id="filter" onchange="filterRows()"{% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>
+                    <option value="all">不限</option>
+                    <option value="杏子豬排">杏子豬排</option>
+                    <option value="段純貞">段純貞</option>
+                    <option value="大阪王將">大阪王將</option>
+                    <option value="京都勝牛">京都勝牛</option>
+                    <option value="橋村炸雞">橋村炸雞</option>
+                    <option value="央廚">央廚</option>
+                </select>
+            </div>   
+                
+            
+        </div>
+        <div class="right-group"></div>
+                <button class="add-btn" onclick="openModal()">新增資料</button>
+        </div>
+            
+        
+    </div>
+    <table id="emailTable" style="width: 95%; margin: auto;">
+        <colgroup>
+            <col style="width: 13%;">
+            <col style="width: 28%;">
+            <col style="width: 35%;">
+            <col style="width: 10%;">
+            <col style="width: 10%;">
+            <col style="width: 4%;">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>品牌</th>
+                <th>門市</th>
+                <th>Email</th>
+                <th>店長</th>
+                <th>區經理</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if email_list %}
+                {% for item in email_list %}
+                <tr>
+                    <td>{{ item.brand_group }}</td>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.email }}</td>
+                    <td>{{ item.dept1 }}</td>
+                    <td>{{ item.dept2 }}</td>
+                    <td>
+                        <div class="editdeletdropdown" style="position: relative;">
+                            <img src="/static/img/edit.png" alt="操作" class="editdeletdropdown-btn"
+                                onclick="EditDeletDropdown(this)"
+                                style="cursor:pointer; width:20px; height:20px;">
+
+                            <div class="editdeletdropdown-content"
+                                style="display:none; position:absolute; right:0; top:25px; background:#fff; border:1px solid #ccc; box-shadow:0 2px 8px rgba(0,0,0,0.15); border-radius:5px; min-width:80px; z-index:100;">
+                                <button class="editBtn"
+                                        data-brand="{{ item.brand_group }}"
+                                        data-name="{{ item.name }}"
+                                        data-email="{{ item.email }}"
+                                        data-dept1="{{ item.dept1 }}"
+                                        data-dept2="{{ item.dept2 }}"
+                                        onclick="openEditModal(this)"  
+                                        style="display:block; width:100%; padding:8px; border:none; background:none; text-align:left;">
+                                    修改
+                                </button>
+                                <button class="deletbtn"
+                                        data-brand="{{ item.brand_group }}"
+                                        data-name="{{ item.name }}"
+                                        data-email="{{ item.email }}"
+                                        onclick="opendeletModal(this)"  
+                                        style="display:block; width:100%; padding:8px; border:none; background:none; text-align:left;">
+                                    刪除
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: gray;">查無資料</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+    
+
+    <script>
+        function toggleDropdown() {
+            document.querySelector('.user-info').classList.toggle('show');
+        }
+
+        function publicholiday() {
+            document.querySelector('.publicholiday-info').classList.toggle('show');
+        }
+        function EditDeletDropdown(elem) {
+            const dropdown = elem.nextElementSibling;
+            // 關閉其他 dropdown
+            document.querySelectorAll('.editdeletdropdown-content').forEach(div => {
+                if (div !== dropdown) div.style.display = 'none';
+            });
+            // 切換當前 dropdown
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+        window.addEventListener('click', function(event) {
+            const userInfo = document.querySelector('.user-info');
+            const holidayInfo = document.querySelector('.publicholiday-info');
+
+            // 關閉 user-info
+            if (userInfo && !userInfo.contains(event.target) && !event.target.closest('.user-toggle-btn')) {
+                userInfo.classList.remove('show');
+            }
+
+            // 關閉 publicholiday-info
+            if (holidayInfo && !holidayInfo.contains(event.target) && !event.target.closest('.holiday-toggle-btn')) {
+                holidayInfo.classList.remove('show');
+            }
+
+            // 關閉所有 dropdown-content，除非點擊的是圖片或內容本身
+            if (!event.target.closest('.editdeletdropdown')) {
+                document.querySelectorAll('.editdeletdropdown-content').forEach(div => {
+                    div.style.display = 'none';
+                });
+            }
+        });
+
+        function filterTable() {
+            const input = document.getElementById("search").value.toLowerCase();
+            const rows = document.querySelectorAll("#emailTable tbody tr");
+
+            rows.forEach(row => {
+                const department = row.cells[0].textContent.toLowerCase();
+                row.style.display = department.includes(input) ? "" : "none";
+            });
+        }
+        function filterRows() {
+            const filter = document.getElementById("filter").value;
+            const rows = document.querySelectorAll("#emailTable tbody tr");
+
+            rows.forEach(row => {
+                const brandCellText = row.cells[0].textContent.trim();
+
+                if (filter === "all" || brandCellText === filter) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+    </script>
+</body>
+<div id="DeletModal" class="deletmodal">
+    <div class="deletmodal-content">
+        <span class="close" onclick="closedeletModal()">&times;</span>
+        <h2 style="color: red;">是否要刪除資料</h2>
+        <label for="EstoreName">門市名稱：</label>
+        <span id="deleteStoreName"></span>
+        <div class="deletmodal-actions">
+            <button onclick="savedelet()">確定</button>
+            <button onclick="closedeletModal()">取消</button>
+        </div>
+    </div>
+    <style>
+    /* Modal 遮罩 */
+    .deletmodal {
+        display: none;
+        position: fixed;
+        z-index: 999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+        }
+
+        /* Modal 內容 */
+        .deletmodal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 400px;
+        font-family: "Microsoft JhengHei", sans-serif;
+        position: relative;
+        }
+
+        /* 關閉按鈕 */
+        .close {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 24px;
+        cursor: pointer;
+        }
+
+        /* 表單項目 */
+        .deletmodal-content label {
+        display: block;
+        margin-top: 12px;
+        font-weight: bold;
+        }
+
+        .deletmodal-content input,
+        .deletmodal-content select {
+        width: 100%;
+        padding: 8px;
+        margin-top: 4px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+        }
+
+        /* 動作按鈕 */
+        .deletmodal-actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .deletmodal-actions button {
+            padding: 8px 16px;
+            background-color: #352349;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .deletmodal-actions button:hover {
+            background-color: #4b3566;
+        }
+            
+    </style>
+    <script>
+        function opendeletModal(btn) {
+            const Dname = btn.dataset.name;
+            document.getElementById('deleteStoreName').textContent = Dname;
+            // 應該是顯示整個 Modal（含遮罩）
+            document.getElementById('DeletModal').style.display = 'block';
+        }
+
+        function closedeletModal() {
+            document.getElementById("DeletModal").style.display = "none";
+        }
+        function savedelet() {
+            const name = document.getElementById("deleteStoreName").textContent;
+            
+            
+
+            // 用 fetch 發送 POST
+            fetch("/deletemail", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({name})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 成功後更新表格
+                    
+
+                    closedeletModal();
+                    location.reload(); 
+                } else {
+                    alert("更新失敗:"+data.error );
+                    closedeletModal();
+                    location.reload(); 
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("發生錯誤，請稍後再試。");
+                closedeletModal();
+                location.reload(); 
+            });
+            
+        }
+    </script>
+</div>
+<div id="EditModal" class="editmodal">
+  <div class="editmodal-content">
+    <span class="close" onclick="closeEditModal()">&times;</span>
+
+    <h2>新增店櫃</h2>
+
+    <label for="Ebrand">品牌：</label>
+    <select id="Ebrand">
+      <option value="杏子豬排">杏子豬排</option>
+      <option value="段純貞">段純貞</option>
+      <option value="大阪王將">大阪王將</option>
+      <option value="京都勝牛">京都勝牛</option>
+      <option value="橋村炸雞">橋村炸雞</option>
+      <option value="央廚">央廚</option>
+    </select>
+
+    <label for="EstoreName">門市名稱：</label>
+    <input type="text" id="EstoreName" placeholder="輸入門市名稱">
+
+    <label for="EstoreEmail">Email：</label>
+    <input type="email" id="EstoreEmail" placeholder="輸入 Email">
+
+    <label for="edept1">店長工號：</label>
+    <input type="text" id="edept1" placeholder="輸入 店長工號">
+
+    <label for="edept2">區經理工號：</label>
+    <input type="text" id="edept2" placeholder="輸入 區經理工號">
+
+    <div class="editmodal-actions">
+      <button onclick="saveedit()">儲存</button>
+      <button onclick="closeEditModal()">取消</button>
+    </div>
+    <input type="hidden" id="ori_brand">
+    <input type="hidden" id="ori_storeName">
+    <input type="hidden" id="ori_storeEmail">
+    <input type="hidden" id="ori_dept1">
+    <input type="hidden" id="ori_dept2">
+  </div>
+  <style>
+    /* Modal 遮罩 */
+    .editmodal {
+        display: none;
+        position: fixed;
+        z-index: 999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+        }
+
+        /* Modal 內容 */
+        .editmodal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 400px;
+        font-family: "Microsoft JhengHei", sans-serif;
+        position: relative;
+        }
+
+        /* 關閉按鈕 */
+        .close {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 24px;
+        cursor: pointer;
+        }
+
+        /* 表單項目 */
+        .editmodal-content label {
+        display: block;
+        margin-top: 12px;
+        font-weight: bold;
+        }
+
+        .editmodal-content input,
+        .editmodal-content select {
+        width: 100%;
+        padding: 8px;
+        margin-top: 4px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+        }
+
+        /* 動作按鈕 */
+        .editmodal-actions {
+        margin-top: 20px;
+        text-align: right;
+        }
+
+        .editmodal-actions button {
+        padding: 8px 16px;
+        margin-left: 8px;
+        background-color: #352349;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        }
+
+        .editmodal-actions button:hover {
+        background-color: #4b3566;
+        }
+  </style>
+  <script>
+    function openEditModal(btn) {
+        const Ebrand = btn.dataset.brand;
+        const Ename = btn.dataset.name;1
+        const Eemail = btn.dataset.email;
+        const edept1 = btn.dataset.dept1;
+        const edept2 = btn.dataset.dept2;
+        // 將值填入 modal 表單
+        document.getElementById("Ebrand").value = Ebrand;
+        document.getElementById("EstoreName").value = Ename;
+        document.getElementById("EstoreEmail").value = Eemail;
+        document.getElementById("edept1").value = edept1;
+        document.getElementById("edept2").value = edept2;
+        document.getElementById("ori_brand").value = Ebrand;
+        document.getElementById("ori_storeName").value = Ename;
+        document.getElementById("ori_storeEmail").value = Eemail;
+        document.getElementById("ori_dept1").value = edept1;
+        document.getElementById("ori_dept2").value = edept2;
+        document.getElementById("EditModal").style.display = "block";
+    }
+    function closeEditModal() {
+        document.getElementById("EditModal").style.display = "none";
+        // 清空欄位
+        document.getElementById("Ebrand").value = "杏子豬排";
+        document.getElementById("EstoreName").value = "";
+        document.getElementById("EstoreEmail").value = "";
+        document.getElementById("edept1").value = "";
+        document.getElementById("edept2").value = "";
+    }
+
+
+    function saveedit() {
+        const Ebrand = document.getElementById("Ebrand").value;
+        const Ename = document.getElementById("EstoreName").value.trim();
+        const Eemail = document.getElementById("EstoreEmail").value.trim();
+        const edept1 = document.getElementById("edept1").value.trim();
+        const edept2 = document.getElementById("edept2").value.trim();
+        const ori_brand = document.getElementById("ori_brand").value;
+        const ori_name = document.getElementById("ori_storeName").value.trim();
+        const ori_email = document.getElementById("ori_storeEmail").value.trim();
+        const ori_dept1 = document.getElementById("ori_dept1").value.trim();
+        const ori_dept2 = document.getElementById("ori_dept2").value.trim();
+        if (!Ename || !Eemail ||!edept1 || !edept2) {
+            alert("請完整填寫門市名稱與 Email！");
+            return;
+        }
+
+        // 用 fetch 發送 POST
+        fetch("/editemail", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ Ebrand, Ename, Eemail,edept1,edept2 ,ori_brand,ori_name,ori_email,ori_dept1,ori_dept2})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 成功後更新表格
+                
+
+                closeEditModal();
+                location.reload(); 
+            } else {
+                alert("更新失敗:"+data.error );
+                closeEditModal();
+                location.reload(); 
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("發生錯誤，請稍後再試。");
+            closeEditModal();
+            location.reload(); 
+        });
+        
+    }
+  </script>
+</div>
+<div id="addModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeModal()">&times;</span>
+
+    <h2>新增店櫃</h2>
+
+    <label for="brand">品牌：</label>
+    <select id="brand">
+      <option value="杏子豬排">杏子豬排</option>
+      <option value="段純貞">段純貞</option>
+      <option value="大阪王將">大阪王將</option>
+      <option value="京都勝牛">京都勝牛</option>
+      <option value="橋村炸雞">橋村炸雞</option>
+      <option value="央廚">央廚</option>
+    </select>
+
+    <label for="storeName">門市名稱：</label>
+    <input type="text" id="storeName" placeholder="輸入門市名稱">
+
+    <label for="storeEmail">Email：</label>
+    <input type="email" id="storeEmail" placeholder="輸入 Email">
+
+    <label for="dept1">店長工號：</label>
+    <input type="text" id="dept1" placeholder="輸入 店長工號">
+
+    <label for="dept2">區經理工號：</label>
+    <input type="text" id="dept2" placeholder="輸入 區經理工號">
+
+    <div class="modal-actions">
+      <button onclick="saveEntry()">儲存</button>
+      <button onclick="closeModal()">取消</button>
+    </div>
+  </div>
+  <style>
+    /* Modal 遮罩 */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.4);
+        }
+
+        /* Modal 內容 */
+        .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 20px;
+        border-radius: 10px;
+        width: 400px;
+        font-family: "Microsoft JhengHei", sans-serif;
+        position: relative;
+        }
+
+        /* 關閉按鈕 */
+        .close {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 24px;
+        cursor: pointer;
+        }
+
+        /* 表單項目 */
+        .modal-content label {
+        display: block;
+        margin-top: 12px;
+        font-weight: bold;
+        }
+
+        .modal-content input,
+        .modal-content select {
+        width: 100%;
+        padding: 8px;
+        margin-top: 4px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+        }
+
+        /* 動作按鈕 */
+        .modal-actions {
+        margin-top: 20px;
+        text-align: right;
+        }
+
+        .modal-actions button {
+        padding: 8px 16px;
+        margin-left: 8px;
+        background-color: #352349;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        }
+
+        .modal-actions button:hover {
+        background-color: #4b3566;
+        }
+  </style>
+  <script>
+    function openModal() {
+        document.getElementById("addModal").style.display = "block";
+    }
+    
+
+    function closeModal() {
+        document.getElementById("addModal").style.display = "none";
+        // 清空欄位
+        document.getElementById("brand").value = "杏子豬排";
+        document.getElementById("storeName").value = "";
+        document.getElementById("storeEmail").value = "";
+        document.getElementById("dept1").value = "";
+        document.getElementById("dept2").value = "";
+        
+    }
+
+    function saveEntry() {
+        const brand = document.getElementById("brand").value;
+        const name = document.getElementById("storeName").value.trim();
+        const email = document.getElementById("storeEmail").value.trim();
+        const dept1 = document.getElementById("dept1").value.trim();
+        const dept2 = document.getElementById("dept2").value.trim();
+        if (!name || !email || !dept1 || !dept2) {
+            alert("請完整填寫資料！");
+            return;
+        }
+
+        // 用 fetch 發送 POST
+        fetch("/addemail", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ brand, name, email ,dept1,dept2})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 成功後加入表格
+                const table = document.querySelector("#emailTable tbody");
+                const newRow = document.createElement("tr");
+                newRow.innerHTML = `
+                    <td>${brand}</td>
+                    <td>${name}</td>
+                    <td>${email}</td>
+                    <td>${dept1}</td>
+                    <td>${dept2}</td>
+                `;
+                table.appendChild(newRow);
+
+                closeModal();
+                location.reload(); 
+            } else {
+                alert("新增失敗:"+data.error );
+                closeModal();
+                location.reload(); 
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("發生錯誤，請稍後再試。");
+            closeModal();
+            location.reload(); 
+        });
+        
+    }
+  </script>
+</div>
+
+
+</html>

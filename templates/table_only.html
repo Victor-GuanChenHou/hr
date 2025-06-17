@@ -1,0 +1,30 @@
+{% if tables %}
+<table id="signatureTable" style="width: 95%; margin: auto;">
+    <thead>
+        <tr>
+            {% for col in tables[0].keys() if col != 'signature' %}
+                <th>{{ col }}</th>
+            {% endfor %}
+            <th>簽名(正楷中文)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in tables %}
+        <tr id="row-{{ loop.index0 }}">
+            {% for key, value in row.items() if key != 'signature' %}
+                <td>{{ value }}</td>
+            {% endfor %}
+            <td>
+                {% if row.signature %}
+                    <img src="{{ row.signature }}" class="signature" />
+                {% else %}
+                    <span style="color: red; font-weight: bold;">尚未簽名</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="text-align:center; margin-top: 50px; font-size: 18px; color: red;">無簽名資料，請上傳資料。</p>
+{% endif %}

@@ -33,6 +33,7 @@
             font-size: 18px;
         }
         .user-info {
+            margin-left: auto;
             position: relative;
             display: flex;
             align-items: center;
@@ -40,6 +41,15 @@
             cursor: pointer;
             user-select: none;
         }
+        .publicholiday-info {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
         .user-icon {
             width: 40px;
             height: 40px;
@@ -74,15 +84,42 @@
             font-weight: bold;
             border-bottom: 1px solid #eee;
         }
-        .dropdown-content a:last-child {
-            border-bottom: none;
-        }
-        .dropdown-content a:hover {
+        /* .dropdown-content a:hover {
             background-color: #f0f0f0;
-        }
+        } */
         .user-info.show .dropdown-content {
             display: block;
         }
+        .publicdropdown-content {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background-color: white;
+            color: #214647;
+            min-width: 200px;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .publicdropdown-content a {
+            display: block;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #214647;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+        }
+        .publicdropdown-content a:hover {
+            background-color: #f0f0f0;
+        }
+        .publicholiday-info.show .publicdropdown-content {
+            display: block;
+        }
+        .name {
+            font-size: 18px;
+        }
+        
         table, th, td {
             border: 1px solid black;
             border-collapse: collapse;
@@ -102,12 +139,20 @@
 
 <div class="navbar">
     <a href="{{ url_for('home') }}">
-    <img src="/static/img/logo.png" alt="Kingza Logo" class="logo" />
+        <img src="/static/img/logo.png" alt="Kingza Logo" class="logo" />
     </a>
-    
-    <div class="nav-links">
-        <a href="/home/sing">國定假日調移簽名</a>
+    <div class="publicholiday-info" onclick="publicholiday()">
+        <div class="name">國定假日調移簽名</div>
+        <div class="publicdropdown-content">
+            <a href="{{ url_for('index') }}">國定假日調移簽名</a>
+            {% if has_permission %}
+                <a href="{{ url_for('search') }}">國定假日調移查詢</a>
+            {% endif %}
+
+                
+        </div>
     </div>
+        
     <div class="user-info" onclick="toggleDropdown()">
         <div class="user-icon">👤</div>
         <div class="name">{{ name }}</div>
@@ -163,10 +208,23 @@
     function toggleDropdown() {
         document.querySelector('.user-info').classList.toggle('show');
     }
+    function publicholiday() {
+        document.querySelector('.publicholiday-info').classList.toggle('show');
+    }
+
+        // ✅ 合併成一個 click listener 處理所有 dropdown
     window.addEventListener('click', function(event) {
         const userInfo = document.querySelector('.user-info');
+        const holidayInfo = document.querySelector('.publicholiday-info');
+
+            // 點擊 user-info 外部時關閉
         if (!userInfo.contains(event.target)) {
             userInfo.classList.remove('show');
+        }
+
+            // 點擊 publicholiday-info 外部時關閉
+        if (!holidayInfo.contains(event.target)) {
+            holidayInfo.classList.remove('show');
         }
     });
 
