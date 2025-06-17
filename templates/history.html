@@ -454,19 +454,26 @@
     function fetchFilteredTable() {
         const filterValue = document.getElementById("filter").value;
 
-        fetch(`/filter_table?filter=${encodeURIComponent(filterValue)}`)
+        // 返回 Promise，方便在外面使用 finally
+        return fetch(`/filter_table?filter=${encodeURIComponent(filterValue)}`)
             .then(res => res.text())
             .then(html => {
                 document.getElementById("table-container").innerHTML = html;
-                filterRows()
+                filterRows();
             })
             .catch(err => {
                 console.error("載入失敗", err);
                 alert("載入資料失敗");
             });
     }
+    function showLoadingSpinner(show) {
+        document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
+    }
     function select(){
-        fetchFilteredTable()
+        showLoadingSpinner(true);
+        fetchFilteredTable().finally(() => {
+            showLoadingSpinner(false);
+        });
         
 
     }
@@ -662,7 +669,7 @@
 </div>
 <div id="loadingSpinner" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
      z-index: 20000; color: white; font-size: 24px; background: rgba(0,0,0,0.6); padding: 20px 30px; border-radius: 8px;">
-  上傳中，請稍候...
+  查詢中，請稍候...
 </div>
 <div id="message" style="display: none; margin: 10px; padding: 10px; border-radius: 6px; font-weight: bold;"></div>
 </body>
