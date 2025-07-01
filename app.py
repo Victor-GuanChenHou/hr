@@ -802,7 +802,7 @@ def search():
         display_data = []
         for idx, row in filtered_df.iterrows():
             item = row[['單位名稱', '員工編號', '員工姓名', '身份別', '日期', '班別']].to_dict()
-            emp_id = row['員工編號'] 
+            emp_id = item['員工編號'] 
             signature_file = os.path.join(SIGNATURE_FOLDER, emp_id, f'row_{idx}.png')
             if os.path.exists(signature_file):
                 item['signature'] = f'/static/signatures/{emp_id}/row_{idx}.png'
