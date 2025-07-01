@@ -11,6 +11,7 @@ import json
 import sub as sub
 from datetime import datetime
 from dotenv import load_dotenv
+from collections import defaultdict
 import os
 ENV = './.env' 
 load_dotenv(dotenv_path=ENV)
@@ -798,16 +799,20 @@ def search():
         ]
         filtered_df = df[((df['單位名稱'].isin(user_store_names))|(df['員工編號']== username)) & (df['班別'] == '國定假日') & ((df['身份別'] == '門市副理(含)級以上') | (df['身份別'] == '門市正職人員'))]
         filtered_df = filtered_df.reset_index(drop=True)
-
+        emp_row_index = defaultdict(int)
         display_data = []
-        for idx, row in filtered_df.iterrows():
+        for _, row in filtered_df.iterrows():
             item = row[['單位名稱', '員工編號', '員工姓名', '身份別', '日期', '班別']].to_dict()
-            emp_id = item['員工編號'] 
-            signature_file = os.path.join(SIGNATURE_FOLDER, emp_id, f'row_{idx}.png')
+            emp_id = item['員工編號']
+            
+            row_idx = emp_row_index[emp_id]  # 目前這位員工的 index
+            emp_row_index[emp_id] += 1       # 下一筆 +1
+            
+            signature_file = os.path.join(SIGNATURE_FOLDER, emp_id, f'row_{row_idx}.png')
             if os.path.exists(signature_file):
-                item['signature'] = f'/static/signatures/{emp_id}/row_{idx}.png'
+                item['signature'] = f'/static/signatures/{emp_id}/row_{row_idx}.png'
             else:
-                item['signature'] = ''  # 沒有簽名
+                item['signature'] = ''
             display_data.append(item)
         if username in dept1 or username in dept2:
             return render_template('search.html', tables=display_data, username=username, name=name, has_permission=True)
