@@ -796,7 +796,7 @@ def search():
             for item in store_data
             if item.get("dept1") == username or item.get("dept2") == username
         ]
-        filtered_df = df[(df['單位名稱'].isin(user_store_names)) & (df['班別'] == '國定假日') & ((df['身份別'] == '門市副理(含)級以上') | (df['身份別'] == '門市正職人員'))]
+        filtered_df = df[((df['單位名稱'].isin(user_store_names))|(df['員工編號']== username)) & (df['班別'] == '國定假日') & ((df['身份別'] == '門市副理(含)級以上') | (df['身份別'] == '門市正職人員'))]
         filtered_df = filtered_df.reset_index(drop=True)
 
         display_data = []
