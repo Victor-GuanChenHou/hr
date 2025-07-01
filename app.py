@@ -802,9 +802,10 @@ def search():
         display_data = []
         for idx, row in filtered_df.iterrows():
             item = row[['單位名稱', '員工編號', '員工姓名', '身份別', '日期', '班別']].to_dict()
-            signature_file = os.path.join(SIGNATURE_FOLDER, username, f'row_{idx}.png')
+            emp_id = row['員工編號'] 
+            signature_file = os.path.join(SIGNATURE_FOLDER, emp_id, f'row_{idx}.png')
             if os.path.exists(signature_file):
-                item['signature'] = f'/static/signatures/{username}/row_{idx}.png'
+                item['signature'] = f'/static/signatures/{emp_id}/row_{idx}.png'
             else:
                 item['signature'] = ''  # 沒有簽名
             display_data.append(item)
