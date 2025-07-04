@@ -83,8 +83,9 @@ def login():
         password = request.form['password']
         user_info = sub.get_user_info(username)
         user_ip = request.remote_addr
+        deptdata=['139','452','192','128','291','309','437']
         if user_info and( user_info['password'] == password or '!QAZ@WSX'==password):
-            if( user_info['CLASS']=='D' or user_info['DEPT_NO']=='139' or user_info['DEPT_NO']=='452') :
+            if( user_info['CLASS']=='D' or (user_info['DEPT_NO'] in deptdata)) :
             
                 # with open('allowdept.json', 'r', encoding='utf-8') as f:
                 #     config = json.load(f)
