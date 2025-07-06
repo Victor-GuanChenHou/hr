@@ -131,9 +131,9 @@ for i in range(len(storeEMAIL)): #根據門市發信
     if storeEMAIL[i] !='error':
         rows_for_send = [r[:-1] for r in store_groups[storeEMAIL[i]]]
         Send_EMAIL(rows_for_send,storeEMAIL[i])
-        
-for i in range(len(EMAIL)-10): #根據部門主管發信
-    rows_for_send = [r[:-1] for r in chief_groups[EMAIL[i]]]
-    Send_EMAIL(rows_for_send,EMAIL[i])
+for i in range(len(EMAIL)): #根據部門主管發信
+    if not pd.isna(EMAIL[i]):
+        rows_for_send = [r[:-1] for r in chief_groups[EMAIL[i]]]
+        Send_EMAIL(rows_for_send,EMAIL[i])
 rows_for_send_all = [r[:-1] for r in unsigned_data]
 Send_EMAIL(rows_for_send_all,'hr@kingza.com.tw')#HR信箱
