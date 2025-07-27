@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}人資簽核系統{% endblock %}
+
+
+
+{% block content %}
+
+<head>
+    <meta charset="utf-8">
+    <title>國定假日調移同意書</title>
+    <style>
+        #container {
+            max-height: 1000px;
+            max-width: 800px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: white;
+        }
+        .title {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+        }
+        .highlight {
+            color: red;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        td, th {
+            border: 1px solid black;
+            padding: 5px;
+        }
+        .signature-section {
+            margin-top: 10px;
+        }
+        .signature-section canvas {
+            border: 1px solid #999;
+            background: #fdfdfd;
+            border-radius: 4px;
+        }
+        .signature-section button {
+            margin-top: 5px;
+            margin-right: 5px;
+            padding: 6px 12px;
+            font-size: 14px;
+            border-radius: 4px;
+            border: none;
+            background-color: #4b3566;
+            color: white;
+            cursor: pointer;
+        }
+        .signature-section button:hover {
+            background-color: #37264d;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <form method="POST" action="/submit" id="holidayForm">
+            <!-- 動態插入內容 -->
+        </form>
+    </div>
+    <br>
+    
+
+    <script>
+    fetch('/api/docx')
+        .then(res => res.json())
+        .then(data => {
+            const form = document.getElementById('holidayForm');
+            if (!data || Object.keys(data).length === 0 || (!data.before_table && !data.table && !data.after_table)) {
+                form.innerHTML = `
+                    <p style="text-align:center; margin-top: 50px; font-size: 18px; color: red;">
+                        尚無需簽名資料。
+                    </p>
+                `;
+                const container = document.getElementById("container");
+                container.style.backgroundColor = "transparent";  // 背景透明
+                container.style.border = "none";         
+                return;
+            }
+            const highlightText = text => {
+                const regex = /#(.*?)。/;
+                return text.replace(regex, '<span class="highlight">#$1。</span>');
+            };
+
+            data.before_table.forEach(p => {
+                if (p.includes('國定假日調移同意書')) {
+                    form.innerHTML += `<p class="title">${p}</p>`;
+                } else {
+                    form.innerHTML += `<p>${highlightText(p)}</p>`;
+                }
+            });
+
+            data.table.forEach(table => {
+                let html = '<table>';
+                table.forEach(row => {
+                    html += '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+                });
+                html += '</table><br>';
+                form.innerHTML += html;
+            });
+
+            data.after_table.forEach(p => {
+                let input = '';
+                if (p.includes('本人以詳閱')) {
+                    if (data.has_signature && data.signature_url) {
+                        input = `
+                            <div class="signature-section">
+                                <img src="${data.signature_url}" width="350" height="120" />
+                            </div>
+                        `;
+                     } else {
+                        input = `
+                            <div class="signature-section">
+                                <canvas id="reviewSignaturePad" width="350" height="120"></canvas><br>
+                                <button type="button" onclick="clearReviewSignature()">清除</button>
+                                <button type="button" onclick="submitForm()">送出表單</button>
+                                <input type="hidden" name="signature" id="reviewSignatureData">
+                            </div>
+                        `;
+                     }
+                }
+                form.innerHTML += `<p>${highlightText(p)} ${input}</p>`;
+            });
+
+            setupReviewSignatureCanvas();
+        });
+
+    let reviewCanvas, reviewCtx, drawingReview = false;
+
+    function setupReviewSignatureCanvas() {
+        reviewCanvas = document.getElementById('reviewSignaturePad');
+        if (!reviewCanvas) return;
+
+        reviewCtx = reviewCanvas.getContext('2d');
+        reviewCtx.lineWidth = 2;
+        reviewCtx.strokeStyle = "#000";
+
+        reviewCanvas.addEventListener('mousedown', e => {
+            drawingReview = true;
+            const rect = reviewCanvas.getBoundingClientRect();
+            reviewCtx.beginPath();
+            reviewCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        reviewCanvas.addEventListener('mousemove', e => {
+            if (!drawingReview) return;
+            const rect = reviewCanvas.getBoundingClientRect();
+            reviewCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            reviewCtx.stroke();
+        });
+
+        reviewCanvas.addEventListener('mouseup', () => drawingReview = false);
+        reviewCanvas.addEventListener('mouseout', () => drawingReview = false);
+
+        reviewCanvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            drawingReview = true;
+            const rect = reviewCanvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            reviewCtx.beginPath();
+            reviewCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        });
+
+        reviewCanvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (!drawingReview) return;
+            const rect = reviewCanvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            reviewCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+            reviewCtx.stroke();
+        });
+
+        reviewCanvas.addEventListener('touchend', () => drawingReview = false);
+    }
+
+    function clearReviewSignature() {
+        if (reviewCtx) reviewCtx.clearRect(0, 0, reviewCanvas.width, reviewCanvas.height);
+    }
+
+    function saveReviewSignature() {
+        if (!reviewCanvas) return;
+        const whiteCanvas = document.createElement('canvas');
+        whiteCanvas.width = reviewCanvas.width;
+        whiteCanvas.height = reviewCanvas.height;
+
+        const whiteCtx = whiteCanvas.getContext('2d');
+        whiteCtx.fillStyle = "#FFFFFF";
+        whiteCtx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
+        whiteCtx.drawImage(reviewCanvas, 0, 0);
+
+        const dataURL = whiteCanvas.toDataURL("image/png");
+        document.getElementById('reviewSignatureData').value = dataURL;
+    }
+
+    function submitForm() {
+        saveReviewSignature();
+
+        const formData = new FormData(document.getElementById("holidayForm"));
+        // let username = prompt("請輸入姓名：");
+        // if (!username) username = "anonymous";
+        // formData.append("username", username);
+
+        fetch("/submit", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === "success") {
+                if (data.docx) {
+                    alert("簽名已送出" + data.docx);
+                    
+                    // const link = document.createElement("a");
+                    // link.href = data.docx;
+                    // link.download = data.docx.split("/").pop();
+                    // document.body.appendChild(link);
+                    // link.click();
+                    // document.body.removeChild(link);
+                } else {
+                    alert("簽名已送出。");
+                }
+                location.reload(); 
+            } else {
+                alert("送出失敗：" + (data.error || "未知錯誤"));
+                location.reload(); 
+            }
+        })
+        .catch(err => {
+            alert("發生錯誤：" + err);
+        });
+    }
+    </script>
+{% endblock %}

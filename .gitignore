@@ -7,4 +7,6 @@
 test.py
 *pdf
 *.doc
-mailserver.py
+*.gitignore
+*.docx
+*.zip

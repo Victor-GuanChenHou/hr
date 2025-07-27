@@ -6,42 +6,31 @@
 
 {% block content %}
 
-
 <div class="filter-bar">
   <!-- 左側：篩選和匯出 -->
   <div class="left-group">
     <div class="select-wrapper">
-      <label for="filter">結算檔案</label>
-        <select id="filter" >
-            
-            {% for folder in folders|sort|reverse  %}
-                <option value="{{ folder }}">{{ folder }}</option>
-            {% endfor %}
-        </select>
-        
+      <label for="filter">簽名狀態</label>
+      <select id="filter" onchange="filterRows()"{% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>
+        <option value="all">不限</option>
+        <option value="signed">已簽名</option>
+        <option value="unsigned">未簽名</option>
+      </select>
+      
     </div>
-    <div class="select-wrapper">
-      <label for="signatureFilter">簽名狀態</label>
-        <select id="signatureFilter" >
-            <option value="all">不限</option>
-            <option value="signed">已簽名</option>
-            <option value="unsigned">未簽名</option>
-        </select>
-    </div>
-    <div class="select-wrapper">
-        <label for="empIdInput">員工編號查詢</label>
-        <input type="text" id="empIdInput" placeholder="請輸入員工編號" />
-    </div>
-        <button class="export-btn" onclick="select()">收尋</button>
+        <button class="export-btn" onclick="exportTable()"{% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>匯出</button>
     </div>
 
   <!-- 右側：資料上傳與結算 -->
-    <div class="right-group">
-         <button class="export-btn" onclick="exportTable()">匯出</button>
-    </div>
-
+    {% if is_admin %}
+        <div class="right-group">
+            <button class="export-btn" onclick="openUploadModal()">資料上傳</button>
+            <button class="export-btn" onclick="settlement()" {% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>
+        結算
+    </button>
+        </div>
+    {% endif %}
     <style>   
-    
     .filter-bar {
         display: flex;
         justify-content: space-between;
@@ -89,12 +78,10 @@
     }
 
     .select-wrapper select {
-        max-height: 120px;
-        overflow-y: auto; 
         appearance: none;
         padding: 10px 12px;
         font-size: 16px;
-        width: 200px;
+        width: 150px;
         border: 1px solid #d1d5db;
         border-radius: 6px;
         background-color: #fff;
@@ -112,24 +99,7 @@
         border-color: #6366f1;
         box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
     }
-    .select-wrapper input[type="text"] {
-        padding: 10px 12px;
-        font-size: 16px;
-        width: 200px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        background-color: #fff;
-        color: #374151;
-        font-family: "Microsoft JhengHei", sans-serif;
-        transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        box-sizing: border-box;
-    }
 
-    .select-wrapper input[type="text"]:focus {
-        outline: none;
-        border-color: #6366f1;
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-    }
     .export-btn {
         height: 40px;
         padding: 0 20px;
@@ -149,39 +119,39 @@
     }
   </style>
 </div>
-<div id="table-container">
-    {% if tables %}
-        <table id="signatureTable" style="width: 95%; margin: auto;">
-            <thead>
-                <tr>
-                    {% for col in tables[0].keys() if col != 'signature' %}
-                        <th>{{ col }}</th>
-                    {% endfor %}
-                    <th>簽名(正楷中文)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in tables %}
-                <tr id="row-{{ loop.index0 }}">
-                    {% for key, value in row.items() if key != 'signature' %}
-                        <td>{{ value }}</td>
-                    {% endfor %}
-                    <td>
-                        {% if row.signature %}
-                            <img src="{{ row.signature }}" class="signature" />
-                        {% else %}
-                            <span style="color: red; font-weight: bold;">尚未簽名</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
 
-    {% else %}
-        <p style="text-align:center; margin-top: 50px; font-size: 18px; color: red;">無簽名資料，請上傳資料。</p>
-    {% endif %}
-</div>
+{% if tables %}
+    <table id="signatureTable" style="width: 95%; margin: auto;">
+        <thead>
+            <tr>
+                {% for col in tables[0].keys() if col != 'signature' %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+                <th>簽名(正楷中文)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in tables %}
+            <tr id="row-{{ loop.index0 }}">
+                {% for key, value in row.items() if key != 'signature' %}
+                    <td>{{ value }}</td>
+                {% endfor %}
+                <td>
+                    {% if row.signature %}
+                        <span style="color: black; font-weight: bold;">已簽名</span>
+                    {% else %}
+                        <span style="color: red; font-weight: bold;">尚未簽名</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% else %}
+    <p style="text-align:center; margin-top: 50px; font-size: 18px; color: red;">無簽名資料，請上傳資料。</p>
+{% endif %}
+
 <!-- 簽名區 -->
 <div id="signatureModal" style="display:none; position:fixed; top:10%; left:20%; background:#fff; padding:20px; border:1px solid #000; z-index:10000;">
     <p>請簽名：</p>
@@ -191,7 +161,6 @@
 </div>
 
 <script>
-    
     function toggleDropdown() {
         document.querySelector('.user-info').classList.toggle('show');
     }
@@ -291,67 +260,31 @@
             filterRows();  // 更新過濾結果
         });
     }
-    function fetchFilteredTable() {
-        const filterValue = document.getElementById("filter").value;
 
-        // 返回 Promise，方便在外面使用 finally
-        return fetch(`/filter_table?filter=${encodeURIComponent(filterValue)}`)
-            .then(res => res.text())
-            .then(html => {
-                document.getElementById("table-container").innerHTML = html;
-                filterRows();
-            })
-            .catch(err => {
-                console.error("載入失敗", err);
-                alert("載入資料失敗");
-            });
-    }
-    function showLoadingSpinner(show) {
-        document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
-    }
-    function select(){
-        showLoadingSpinner(true);
-        fetchFilteredTable().finally(() => {
-            showLoadingSpinner(false);
-        });
-        
-
-    }
     function filterRows() {
-        const filter = document.getElementById("signatureFilter").value;
-        const empIdInput = document.getElementById("empIdInput").value.trim().toLowerCase();
+        const filter = document.getElementById("filter").value;
         const rows = document.querySelectorAll("#signatureTable tbody tr");
 
         rows.forEach(row => {
-            const cells = row.querySelectorAll("td");
-            const empIdCell = cells[1]; // 假設員工編號是第一欄
-            const currentId = empIdCell ? empIdCell.textContent.trim().toLowerCase() : "";
-
             const lastCell = row.querySelector("td:last-child");
-            const hasImage = lastCell.querySelector("img") !== null;
+            const hasImage = lastCell.textContent.includes("已簽名");
 
-            // 判斷員工編號是否符合（沒輸入就直接略過這條件）
-            const empIdMatch = (empIdInput === "") || currentId.includes(empIdInput);
-
-            // 判斷簽名狀態是否符合
-            const signMatch = (filter === "all") 
-                || (filter === "signed" && hasImage) 
-                || (filter === "unsigned" && !hasImage);
-
-            // 同時符合兩個條件才顯示
-            row.style.display = (empIdMatch && signMatch) ? "" : "none";
+            if (filter === "all") {
+                row.style.display = "";
+            } else if (filter === "signed") {
+                row.style.display = hasImage ? "" : "none";
+            } else if (filter === "unsigned") {
+                row.style.display = hasImage ? "none" : "";
+            }
         });
     }
-    
     function exportTable() {
         const filter = document.getElementById("filter").value;
-        const sign = document.getElementById("signatureFilter").value;
-        const label = document.getElementById("empIdInput").value; 
-        window.location.href = `/download_history_excel?status=${filter}&sign=${sign}&label=${label}`;
+        window.location.href = `/download_zip?status=${filter}`;
     }
     function settlement() {
         if (confirm("確定要進行結算嗎？")) {
-            fetch('/settlement', {
+            fetch('/yearusettlement', {
                 method: 'POST'
             }).then(res => {
                 if (res.ok) {
@@ -376,8 +309,8 @@
 <div class="modal-overlay" id="uploadModal" style="display:none;">
     <div class="modal-content">
         <h2>上傳簽名資料</h2>
-        <form id="uploadForm" method="POST" action="/upload_original_data" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".xlsx" required />
+        <form id="uploadForm" method="POST" action="/yearupload_original_data" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".docx" required />
             <div class="modal-buttons">
                 <button type="submit" class="upload-btn">上傳</button>
                 <button type="button" class="cancel-btn" onclick="closeUploadModal()">取消</button>
@@ -509,7 +442,7 @@
 </div>
 <div id="loadingSpinner" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
      z-index: 20000; color: white; font-size: 24px; background: rgba(0,0,0,0.6); padding: 20px 30px; border-radius: 8px;">
-  查詢中，請稍候...
+  上傳中，請稍候...
 </div>
 <div id="message" style="display: none; margin: 10px; padding: 10px; border-radius: 6px; font-weight: bold;"></div>
 {% endblock %}
