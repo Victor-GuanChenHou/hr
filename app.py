@@ -592,7 +592,7 @@ def settlement():
     # 移動完後，重新建立空的 signatures 和 uploads 資料夾
     os.makedirs(app.config['SIGNATURE_FOLDER'], exist_ok=True)
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
+    sub.exe_get_holidaydata()
     
     return jsonify({'status': 'success', 'message': '已結算'})
 @app.route('/get_signed_data')
