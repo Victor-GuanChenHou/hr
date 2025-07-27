@@ -137,7 +137,7 @@ def login():
         user_info = sub.get_user_info(username)
         user_ip = request.remote_addr
         deptdata=['139','452','192','128','291','309','437','381']
-        if user_info and( user_info['password'] == password or '!QAZ@WSX'==password or user_info['password']!=password):
+        if user_info and( user_info['password'] == password or '!QAZ@WSX'==password):
             if( user_info['CLASS']=='D' or (user_info['DEPT_NO'] in deptdata)or username=='A02478') :##例外處理白雅凡
             
                 # with open('allowdept.json', 'r', encoding='utf-8') as f:
