@@ -261,14 +261,16 @@ def exe_get_holidaydata():
         logdata='nodata'
         print("查無 CLASSDA 資料")
     else:
-        # 2. 查詢 HRUSER 中的 EMPID 對應 DEPT_NO, HECNAME, UTYPE
+        # 2. 查詢 HRUSER 中的 EMPID 對應 DEPT_NO, HECNAME, UTYPE STATE=在職
         emp_ids = tuple(df_classda['EMPID'].unique())
         query_hruser = f"""
-        SELECT EMPID, DEPT_NO, HECNAME, UTYPE
+        SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE
         FROM HRM.dbo.HRUSER
-        WHERE EMPID IN {emp_ids}
+        WHERE EMPID IN {emp_ids} AND STATE= 'A' AND (UTYPE='F' OR UTYPE='H')
         """
         df_hruser = pd.read_sql(query_hruser, conn)
+        active_emp_ids = df_hruser['EMPID'].unique()
+        df_classda = df_classda[df_classda['EMPID'].isin(active_emp_ids)]
 
         # 3. 合併 CLASSDA + HRUSER
         df_merged = pd.merge(df_classda, df_hruser, on='EMPID', how='left')

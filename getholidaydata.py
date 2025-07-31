@@ -23,6 +23,8 @@ conn = pyodbc.connect(
 )
 #排序
 def get_dep_order(dep_name):
+    if not isinstance(dep_name, str):
+        return 99
     if dep_name == '杏子豬排營運部':
         return 1
     elif dep_name.startswith('杏子'):
@@ -68,12 +70,13 @@ else:
     # 2. 查詢 HRUSER 中的 EMPID 對應 DEPT_NO, HECNAME, UTYPE
     emp_ids = tuple(df_classda['EMPID'].unique())
     query_hruser = f"""
-    SELECT EMPID, DEPT_NO, HECNAME, UTYPE
+    SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE
     FROM HRM.dbo.HRUSER
-    WHERE EMPID IN {emp_ids}
+    WHERE EMPID IN {emp_ids} AND STATE= 'A' AND (UTYPE='F' OR UTYPE='H')
     """
     df_hruser = pd.read_sql(query_hruser, conn)
-
+    active_emp_ids = df_hruser['EMPID'].unique()
+    df_classda = df_classda[df_classda['EMPID'].isin(active_emp_ids)]
     # 3. 合併 CLASSDA + HRUSER
     df_merged = pd.merge(df_classda, df_hruser, on='EMPID', how='left')
 
