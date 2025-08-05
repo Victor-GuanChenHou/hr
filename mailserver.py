@@ -9,7 +9,7 @@ import math
 import json
 ENV = './.env' 
 load_dotenv(dotenv_path=ENV)
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = 'uploads/upload_month'
 SIGNATURE_FOLDER = 'static/signatures'
 
 
