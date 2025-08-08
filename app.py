@@ -1,4 +1,5 @@
-from flask import Flask, send_from_directory,render_template, request, jsonify, send_file, session, redirect, url_for, flash
+from flask import Flask, send_from_directory,render_template, request, jsonify, send_file, session, redirect, url_for, flash,after_this_request
+import threading
 import pandas as pd
 import base64
 import glob
@@ -10,6 +11,7 @@ import shutil
 import json
 import sub as sub
 from datetime import datetime
+import time
 from dotenv import load_dotenv
 from collections import defaultdict
 from docx import Document
@@ -46,6 +48,8 @@ os.makedirs(YEAR_SIGNATURE_FOLDER, exist_ok=True)
 os.makedirs(YEAR_SIGNED_DOCS_FOLDER, exist_ok=True)
 os.makedirs(YEAR_UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(HISTORY_FOLDER, exist_ok=True)
+os.makedirs(TEMP, exist_ok=True)
+
 def gettabledata(foldername):
 
     dept_no=session['dept_no']
@@ -136,7 +140,7 @@ def login():
         password = request.form['password']
         user_info = sub.get_user_info(username)
         user_ip = request.remote_addr
-        deptdata=['139','452','192','128','291','309','437','381']
+        deptdata=['139','452','192','128','291','309','437','381','477']
         if user_info and( user_info['password'] == password or '!QAZ@WSX'==password):
             if( user_info['CLASS']=='D' or (user_info['DEPT_NO'] in deptdata)or username=='A02478') :##例外處理白雅凡
             
@@ -568,7 +572,18 @@ def download_latest_excel():
         wb_signed.save(output_path)
     else:
         wb_all.save(output_path)
+    @after_this_request
+    def cleanup(response):
+        def delayed_delete():
+            time.sleep(10)  # 等待 10 秒確保下載完成
+            try:
+                os.remove(output_path)
+                print(f"✅ 已刪除 TEMP 檔案: {output_path}")
+            except Exception as e:
+                print(f"⚠️ 刪除 TEMP 檔案失敗: {e}")
 
+        threading.Thread(target=delayed_delete, daemon=True).start()
+        return response
     return send_file(output_path, as_attachment=True)
 @app.route('/settlement',methods=['POST'])
 def settlement():
@@ -863,6 +878,7 @@ def search():
         store_data = []
     dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
     dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
+
     # 讀取最新 Excel
     files = glob.glob(os.path.join(UPLOAD_FOLDER, '*.xlsx'))
     if not files:
@@ -970,7 +986,6 @@ def signdocx():
             return render_template('signdocx.html', username=username, name=name, has_permission=True,is_store=True)
         else:
             return render_template('signdocx.html', username=username, name=name, has_permission=False,is_store=True)
-# 表單提交路由：儲存簽名圖並插入 Word
 @app.route('/submit', methods=['POST'])
 def submit():
     try:
@@ -1019,7 +1034,7 @@ def searchdocx():
     dept_no=session['dept_no']
     dept1 = []
     dept2 = []
-    
+    store_list=[]
     try:
         with open("email.json", "r", encoding="utf-8") as f:
             store_data = json.load(f)
@@ -1028,6 +1043,7 @@ def searchdocx():
         store_data = []
     dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
     dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
+    store_list = sorted({item.get("name") for item in store_data if item.get("name")})
     files = glob.glob(os.path.join(YEAR_UPLOAD_FOLDER, '*.docx'))
     
         
@@ -1049,7 +1065,7 @@ def searchdocx():
                     row['signature'] = ''
                 display_data.append(row)
 
-            return render_template('searchdocx.html', tables=display_data, username=username, name=name,is_admin=True)
+            return render_template('searchdocx.html', tables=display_data,stores=store_list, username=username, name=name,is_admin=True)
     else:
         user_store_names = [
             item["name"]
@@ -1058,9 +1074,9 @@ def searchdocx():
         ]
         if not files:
             if username in dept1 or username in dept2:
-                return render_template('searchdocx.html', tables=[], username=username, name=name,is_store=True,has_permission=True, no_data=True)
+                return render_template('searchdocx.html', tables=[],stores=[], username=username, name=name,is_store=True,has_permission=True, no_data=True)
             else:
-                return render_template('searchdocx.html', tables=[], username=username, name=name,is_store=True,has_permission=False, no_data=True)
+                return render_template('searchdocx.html', tables=[],stores=[], username=username, name=name,is_store=True,has_permission=False, no_data=True)
         else:
             for row in data:
                 unit_name = row['單位名稱']
@@ -1083,9 +1099,9 @@ def searchdocx():
                     display_data.append(item)
                 
             if username in dept1 or username in dept2:
-                return render_template('searchdocx.html', tables=display_data, username=username, name=name,is_store=True,has_permission=True)
+                return render_template('searchdocx.html', tables=display_data,stores=store_list, username=username, name=name,is_store=True,has_permission=True)
             else:
-                return render_template('searchdocx.html', tables=display_data, username=username, name=name,is_store=True,has_permission=False)
+                return render_template('searchdocx.html', tables=display_data,stores=store_list, username=username, name=name,is_store=True,has_permission=False)
 @app.route('/yearupload_original_data', methods=['POST'])
 def yearupload_original_data():
     if 'file' not in request.files:
@@ -1137,6 +1153,10 @@ def download_zip():
     username = session['username']
     name = session['name']
     dept_no=session['dept_no']
+    
+    brand = request.args.get('brand')           # 對應 brandFilter
+    store = request.args.get('store')           # 對應 storeFilter
+    weempid = request.args.get('empid')           # 對應 empIdInput
 
     try:
         with open("email.json", "r", encoding="utf-8") as f:
@@ -1148,7 +1168,24 @@ def download_zip():
     
         
     display_data=[]
+    new_data=[]
     data=sub.docxuser()
+    for row in data:
+        # 檢查 brand 條件
+        if brand and not row['單位名稱'].startswith(brand):
+            continue
+
+        # 檢查 store 條件
+        if store and row['單位名稱'] != store:
+            continue
+
+        # 檢查 weempid 條件
+        if weempid and row['員工編號'] != weempid:
+            continue
+
+        # 通過所有篩選條件，加入結果
+        new_data.append(row)
+    data=new_data
     if dept_no == '139' or dept_no=='452':
 
         for  row in data:
@@ -1214,7 +1251,24 @@ def download_zip():
         for file in files_to_zip:
             arcname = os.path.basename(file)  # 壓縮檔中檔名
             zipf.write(file, arcname=arcname)
-
+    @after_this_request
+    def cleanup(response):
+        def delayed_delete():
+            time.sleep(20)  # 等待 10 秒確保下載完成
+            for file in files_to_zip:
+                try:
+                    os.remove(file)
+                    print(f"✅ 已刪除 DOCX 檔案: {file}")
+                except Exception as e:
+                    print(f"⚠️ 無法刪除 DOCX 檔案 {file}: {e}")
+            # 刪除 zip 檔案
+            try:
+                os.remove(zip_path)
+                print(f"✅ 已刪除 ZIP 檔案: {zip_path}")
+            except Exception as e:
+                print(f"⚠️ 無法刪除 ZIP 檔案 {zip_path}: {e}")
+        threading.Thread(target=delayed_delete, daemon=True).start()
+        return response
     # 傳回壓縮檔
     return send_file(zip_path, as_attachment=True, download_name='filtered_documents.zip')
 if __name__ == '__main__':

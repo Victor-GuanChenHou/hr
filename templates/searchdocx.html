@@ -10,20 +10,45 @@
   <!-- 左側：篩選和匯出 -->
   <div class="left-group">
     <div class="select-wrapper">
-      <label for="filter">簽名狀態</label>
-      <select id="filter" onchange="filterRows()"{% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>
+      <label for="signfilter">簽名狀態</label>
+      <select id="signfilter" onchange="filterRows()"{% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>
         <option value="all">不限</option>
         <option value="signed">已簽名</option>
         <option value="unsigned">未簽名</option>
       </select>
-      
     </div>
-        <button class="export-btn" onclick="exportTable()"{% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>匯出</button>
+    {% if is_admin %}
+        <div class="select-wrapper">
+            <label for="brandFilter">品牌</label>
+            <select id="brandFilter" onchange="updateStoreOptions(); filterRows();">
+                <option value="">不限</option>
+                <option value="段純">段純貞</option>
+                <option value="勝牛">京都勝牛</option>
+                <option value="杏子">杏子豬排</option>
+                <option value="王將">大阪王將</option>
+                <option value="橋村">橋村炸雞</option>
+            </select>
+        </div>
+        <div class="select-wrapper">
+            <label for="storeFilter">門市</label>
+            <select id="storeFilter" onchange="filterRows()" {% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>
+                <option value="">不限</option>
+                {% for store in stores %}
+                <option value="{{ store }}">{{ store }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="select-wrapper">
+            <label for="empIdInput">員工編號查詢</label>
+            <input type="text" id="empIdInput" onchange="filterRows()" placeholder="請輸入員工編號" />
+        </div>
+    {% endif %}    
     </div>
 
   <!-- 右側：資料上傳與結算 -->
     {% if is_admin %}
         <div class="right-group">
+            <button class="export-btn" onclick="exportTable()"{% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>匯出</button>
             <button class="export-btn" onclick="openUploadModal()">資料上傳</button>
             <button class="export-btn" onclick="settlement()" {% if no_data %}disabled style="background-color: #ccc; cursor: not-allowed;"{% endif %}>
         結算
@@ -70,7 +95,11 @@
         font-size: 16px;
         color: #4b5563;
     }
-
+    .select-wrapper input[type="text"]:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
     .select-wrapper label {
         margin-bottom: 6px;
         font-weight: 600;
@@ -93,7 +122,18 @@
         cursor: pointer;
         transition: border-color 0.2s ease-in-out;
     }
-
+    .select-wrapper input[type="text"] {
+        padding: 10px 12px;
+        font-size: 16px;
+        width: 200px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background-color: #fff;
+        color: #374151;
+        font-family: "Microsoft JhengHei", sans-serif;
+        transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        box-sizing: border-box;
+    }
     .select-wrapper select:focus {
         outline: none;
         border-color: #6366f1;
@@ -260,27 +300,108 @@
             filterRows();  // 更新過濾結果
         });
     }
+    const allStores = [{% for store in stores %}"{{ store }}",{% endfor %}];
 
+    function getBrandFromStore(storeName) {
+        return storeName.slice(0, 2);  // 取前兩個字
+    }
+
+    // 把所有門市依品牌分組
+    const storeByBrand = {};
+    allStores.forEach(store => {
+        const brand = getBrandFromStore(store);
+        if (!storeByBrand[brand]) {
+            storeByBrand[brand] = [];
+        }
+        storeByBrand[brand].push(store);
+    });
+    
+    function updateStoreOptions() {
+        const brand = document.getElementById("brandFilter").value;
+        const storeSelect = document.getElementById("storeFilter");
+
+        // 清空原選項
+        storeSelect.innerHTML = "";
+
+        // 加回「不限」選項
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "不限";
+        storeSelect.appendChild(defaultOption);
+
+        // 決定要顯示哪些門市
+        let filteredStores = [];
+
+        if (brand === "") {
+            filteredStores = allStores;
+        } else {
+            filteredStores = storeByBrand[brand] || [];
+        }
+
+        // 動態加入門市選項
+        filteredStores.forEach(store => {
+            const option = document.createElement("option");
+            option.value = store;
+            option.textContent = store;
+            storeSelect.appendChild(option);
+        });
+    }
+    
     function filterRows() {
-        const filter = document.getElementById("filter").value;
+        const signFilter = document.getElementById("signfilter").value;
+
+        // 非 admin 時這些元素可能不存在，要先判斷
+        const brandFilterEl = document.getElementById("brandFilter");
+        const storeFilterEl = document.getElementById("storeFilter");
+        const empIdInputEl = document.getElementById("empIdInput");
+
+        const brandFilter = brandFilterEl ? brandFilterEl.value : "";
+        const storeFilter = storeFilterEl ? storeFilterEl.value : "";
+        const empIdInput = empIdInputEl ? empIdInputEl.value.trim() : "";
+
         const rows = document.querySelectorAll("#signatureTable tbody tr");
 
         rows.forEach(row => {
-            const lastCell = row.querySelector("td:last-child");
-            const hasImage = lastCell.textContent.includes("已簽名");
+            const cells = row.querySelectorAll("td");
+            const storeCell = cells[0];  // 第一欄是門市
+            const empIdCell = cells[1];  // 第二欄是員工編號
+            const lastCell = cells[cells.length - 1];  // 最後一欄簽名狀態
+            const hasSigned = lastCell.textContent.includes("已簽名");
 
-            if (filter === "all") {
-                row.style.display = "";
-            } else if (filter === "signed") {
-                row.style.display = hasImage ? "" : "none";
-            } else if (filter === "unsigned") {
-                row.style.display = hasImage ? "none" : "";
+            let show = true;
+
+            // 簽名狀態篩選
+            if (signFilter === "signed" && !hasSigned) show = false;
+            if (signFilter === "unsigned" && hasSigned) show = false;
+
+            // 門市篩選
+            if (storeFilter && storeCell && storeCell.textContent !== storeFilter) show = false;
+
+            // 員工編號篩選
+            if (empIdInput && empIdCell && !empIdCell.textContent.includes(empIdInput)) show = false;
+
+            // 品牌篩選（僅在未指定門市時才進行品牌比對）
+            if (!storeFilter && brandFilter && storeCell && !storeCell.textContent.includes(brandFilter)) {
+                show = false;
             }
+
+            row.style.display = show ? "" : "none";
         });
     }
     function exportTable() {
-        const filter = document.getElementById("filter").value;
-        window.location.href = `/download_zip?status=${filter}`;
+        
+        const signFilter = document.getElementById("signfilter").value;
+        const brandFilter = document.getElementById("brandFilter").value;
+        const storeFilter = document.getElementById("storeFilter").value;
+        const empIdInput = document.getElementById("empIdInput").value.trim();
+        const query = new URLSearchParams({
+            sign: signFilter,
+            brand: brandFilter,
+            store: storeFilter,
+            empid: empIdInput
+        });
+
+        window.location.href = `/download_zip?${query.toString()}`;
     }
     function settlement() {
         if (confirm("確定要進行結算嗎？")) {
