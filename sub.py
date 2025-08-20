@@ -37,12 +37,6 @@ def get_user_info(username):
             return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'CLASS':row[4],'DEPT_NAME':'NOT FOUND','DEPT_KIND':'NOT FOUND'}
     else:
         return None
-
-
-
-
-
-
 def read_excel_compatible(filepath):
     try:
         df = pd.read_excel(filepath, engine='openpyxl')
@@ -218,6 +212,8 @@ def exe_get_holidaydata():
     )
     #排序
     def get_dep_order(dep_name):
+        if not isinstance(dep_name, str):
+            return 99
         if dep_name == '杏子豬排營運部':
             return 1
         elif dep_name.startswith('杏子'):
@@ -238,6 +234,10 @@ def exe_get_holidaydata():
             return 9
         elif dep_name.startswith('橋村'):
             return 10
+        elif dep_name.startswith('雞三和營運部'):
+            return 11
+        elif dep_name.startswith('雞三和'):
+            return 12
         else:
             return 99
     # 取得今天的日期
@@ -253,25 +253,49 @@ def exe_get_holidaydata():
     query_classda = f"""
     SELECT CPNYID, CLASSDA, EMPID, CLASS
     FROM HRM.dbo.CLASSDA
-    WHERE YYMM='{yymm_last_month}' AND CLASS='H'
+    WHERE CLASSDA LIKE'{yymm_last_month}%' AND CLASS='H'
     """
     df_classda = pd.read_sql(query_classda, conn)
 
     if df_classda.empty:
-        logdata='nodata'
         print("查無 CLASSDA 資料")
     else:
-        # 2. 查詢 HRUSER 中的 EMPID 對應 DEPT_NO, HECNAME, UTYPE STATE=在職
+        # 2. 查詢 HRUSER 中的 EMPID 對應 DEPT_NO, HECNAME, UTYPE
         emp_ids = tuple(df_classda['EMPID'].unique())
         query_hruser = f"""
-        SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE
-        FROM HRM.dbo.HRUSER
-        WHERE EMPID IN {emp_ids} AND STATE= 'A' AND (UTYPE='F' OR UTYPE='H')
+        SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE ,UIDENTID
+        FROM HRM.dbo.HRUSER_{yymm_last_month}
+        WHERE EMPID IN {emp_ids}   AND (UTYPE='F' OR UTYPE='H')
         """
         df_hruser = pd.read_sql(query_hruser, conn)
+        emp_ids_c = tuple(df_hruser[df_hruser['STATE'] == 'C']['EMPID'].unique())
+        query_hruser = f"""
+        SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE ,UIDENTID
+        FROM HRM.dbo.HRUSER_{yymm_last_month}
+        WHERE EMPID IN {emp_ids}   AND (UTYPE='F' OR UTYPE='H')
+        """
+        df_hruser = pd.read_sql(query_hruser, conn)
+        UIDENTID_c = tuple(df_hruser[df_hruser['STATE'] == 'C']['UIDENTID'].unique())
+
+        
+        if UIDENTID_c:
+            #查 HRUSER（不加月份）找 UIDENTID 有 STATE='A' 的
+            query_current = f"""
+            SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE ,UIDENTID
+            FROM HRM.dbo.HRUSER
+            WHERE UIDENTID IN {UIDENTID_c} AND STATE='A' 
+            """
+            df_current = pd.read_sql(query_current, conn)
+            
+            # 過濾 C，只保留有對應 A 的
+            valid_uid = set(df_current['UIDENTID'])
+            df_hruser = df_hruser[~((df_hruser['STATE'] == 'C') & (~df_hruser['UIDENTID'].isin(valid_uid)))]
+
+
+    
+        
         active_emp_ids = df_hruser['EMPID'].unique()
         df_classda = df_classda[df_classda['EMPID'].isin(active_emp_ids)]
-
         # 3. 合併 CLASSDA + HRUSER
         df_merged = pd.merge(df_classda, df_hruser, on='EMPID', how='left')
 
@@ -352,6 +376,8 @@ def exe_get_holidaydata():
         output_filename = './uploads/upload_month/'+yymm_last_month+'_國定假日.xlsx'  # 你可以動態產生名稱，或固定名稱
 
         df_result.to_excel(output_filename, index=False)
+
+        print(f"已成功輸出 Excel 檔案：{output_filename}")
 
         logdata='success'
     return logdata    

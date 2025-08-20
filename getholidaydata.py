@@ -45,6 +45,10 @@ def get_dep_order(dep_name):
         return 9
     elif dep_name.startswith('橋村'):
         return 10
+    elif dep_name.startswith('雞三和營運部'):
+        return 11
+    elif dep_name.startswith('雞三和'):
+        return 12
     else:
         return 99
 # 取得今天的日期
@@ -60,7 +64,7 @@ yymm_last_month = last_day_last_month.strftime("%Y%m")
 query_classda = f"""
 SELECT CPNYID, CLASSDA, EMPID, CLASS
 FROM HRM.dbo.CLASSDA
-WHERE YYMM='{yymm_last_month}' AND CLASS='H'
+WHERE CLASSDA LIKE'{yymm_last_month}%' AND CLASS='H'
 """
 df_classda = pd.read_sql(query_classda, conn)
 
@@ -70,11 +74,37 @@ else:
     # 2. 查詢 HRUSER 中的 EMPID 對應 DEPT_NO, HECNAME, UTYPE
     emp_ids = tuple(df_classda['EMPID'].unique())
     query_hruser = f"""
-    SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE
-    FROM HRM.dbo.HRUSER
-    WHERE EMPID IN {emp_ids} AND STATE= 'A' AND (UTYPE='F' OR UTYPE='H')
+    SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE ,UIDENTID
+    FROM HRM.dbo.HRUSER_{yymm_last_month}
+    WHERE EMPID IN {emp_ids}   AND (UTYPE='F' OR UTYPE='H')
     """
     df_hruser = pd.read_sql(query_hruser, conn)
+    emp_ids_c = tuple(df_hruser[df_hruser['STATE'] == 'C']['EMPID'].unique())
+    query_hruser = f"""
+    SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE ,UIDENTID
+    FROM HRM.dbo.HRUSER_{yymm_last_month}
+    WHERE EMPID IN {emp_ids}   AND (UTYPE='F' OR UTYPE='H')
+    """
+    df_hruser = pd.read_sql(query_hruser, conn)
+    UIDENTID_c = tuple(df_hruser[df_hruser['STATE'] == 'C']['UIDENTID'].unique())
+
+    
+    if UIDENTID_c:
+        #查 HRUSER（不加月份）找 UIDENTID 有 STATE='A' 的
+        query_current = f"""
+        SELECT EMPID, DEPT_NO, HECNAME, UTYPE ,STATE ,UIDENTID
+        FROM HRM.dbo.HRUSER
+        WHERE UIDENTID IN {UIDENTID_c} AND STATE='A' 
+        """
+        df_current = pd.read_sql(query_current, conn)
+        
+        # 過濾 C，只保留有對應 A 的
+        valid_uid = set(df_current['UIDENTID'])
+        df_hruser = df_hruser[~((df_hruser['STATE'] == 'C') & (~df_hruser['UIDENTID'].isin(valid_uid)))]
+
+
+   
+    
     active_emp_ids = df_hruser['EMPID'].unique()
     df_classda = df_classda[df_classda['EMPID'].isin(active_emp_ids)]
     # 3. 合併 CLASSDA + HRUSER

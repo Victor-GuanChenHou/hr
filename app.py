@@ -672,7 +672,11 @@ def add_store():
     name = data.get('name')
     email = data.get('email')
     dept1 = data.get('dept1')
+    detdata1=sub.get_user_info(dept1)
+    dept1name=detdata1['name'] 
     dept2 = data.get('dept2')
+    detdata2=sub.get_user_info(dept1)
+    dept2name=detdata2['name'] 
     for item in store_data:
         if item['name'] == name:
             return jsonify({'success': False, 'error': '門市名稱已存在！'})    
@@ -681,7 +685,9 @@ def add_store():
         'name': name,
         'email': email,
         'dept1': dept1,
-        'dept2': dept2
+        'dept1name': dept1name,
+        'dept2': dept2,
+        'dept2name': dept2name
     })
     with open('email.json', 'w', encoding='utf-8') as f:
         json.dump(store_data, f, ensure_ascii=False, indent=4)
@@ -714,7 +720,11 @@ def edit_store():
             item['name'] = name
             item['email'] = email
             item['dept1'] = dept1
+            detdata1=sub.get_user_info(dept1)
+            item['dept1name'] = detdata1['name']
             item['dept2'] = dept2
+            detdata2=sub.get_user_info(dept2)
+            item['dept2name'] = detdata2['name']
             updated = True
             break  # 找到後就不必繼續了
     if updated:
