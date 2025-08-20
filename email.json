@@ -4,9 +4,7 @@
         "name": "杏子台北車站微風店",
         "email": "anzu02@kingza.com.tw",
         "dept1": "A11583",
-        "dept2": "A03748",
-        "dept1name": "石宗翰",
-        "dept2name": "呂嵐婷"
+        "dept2": "A03748"
     },
     {
         "brand_group": "杏子豬排",
@@ -110,14 +108,14 @@
         "brand_group": "杏子豬排",
         "name": "杏子新竹大魯閣店",
         "email": "anzu24@kingza.com.tw",
-        "dept1": "A10911",
+        "dept1": "A14248",
         "dept2": "A02082"
     },
     {
         "brand_group": "杏子豬排",
         "name": "杏子台北凱撒店",
         "email": "anzu25@kingza.com.tw",
-        "dept1": "A07464",
+        "dept1": "A14374",
         "dept2": "A03748"
     },
     {
@@ -180,7 +178,7 @@
         "brand_group": "杏子豬排",
         "name": "杏子新竹巨城店",
         "email": "anzu34@kingza.com.tw",
-        "dept1": "A14248",
+        "dept1": "A14611",
         "dept2": "A02082"
     },
     {
@@ -208,8 +206,8 @@
         "brand_group": "京都勝牛",
         "name": "勝牛台北京站店",
         "email": "kyoto03@kingza.com.tw",
-        "dept1": "A09315",
-        "dept2": "A09121"
+        "dept1": "A10803",
+        "dept2": "A03401"
     },
     {
         "brand_group": "京都勝牛",
@@ -222,7 +220,7 @@
         "brand_group": "京都勝牛",
         "name": "勝牛台南三井店",
         "email": "kyoto07@kingza.com.tw",
-        "dept1": "A02478",
+        "dept1": "A09217",
         "dept2": "A02478"
     },
     {
@@ -236,8 +234,8 @@
         "brand_group": "京都勝牛",
         "name": "勝牛台中Lalaport店",
         "email": "kyoto09@kingza.com.tw",
-        "dept1": "A03401",
-        "dept2": "A02478"
+        "dept1": "A04651",
+        "dept2": "A03401"
     },
     {
         "brand_group": "京都勝牛",
@@ -278,7 +276,7 @@
         "brand_group": "段純貞",
         "name": "段純貞台北京站店",
         "email": "dcz05@kingza.com.tw",
-        "dept1": "A11583",
+        "dept1": "A02299",
         "dept2": "A02299"
     },
     {
@@ -328,7 +326,7 @@
         "name": "王將蘭城新月店",
         "email": "ohsho18@kingza.com.tw",
         "dept1": "A15073",
-        "dept2": "A12655"
+        "dept2": "A11823"
     },
     {
         "brand_group": "大阪王將",
@@ -348,14 +346,14 @@
         "brand_group": "大阪王將",
         "name": "王將信義威秀店",
         "email": "ohsho20@kingza.com.tw",
-        "dept1": "A11583",
-        "dept2": "A12655"
+        "dept1": "A12655",
+        "dept2": "A11518"
     },
     {
         "brand_group": "大阪王將",
         "name": "王將左營環球店",
         "email": "ohsho21@kingza.com.tw",
-        "dept1": "A11583",
+        "dept1": "A11451",
         "dept2": "A11451"
     },
     {
@@ -391,34 +389,41 @@
         "name": "橋村信義新光A11店",
         "email": "kyochon03@kingza.com.tw",
         "dept1": "A11163",
-        "dept2": "A11518"
+        "dept2": "A01154"
     },
     {
         "brand_group": "橋村炸雞",
         "name": "橋村台南西門店",
         "email": "kyochon04@kingza.com.tw",
         "dept1": "A13707",
-        "dept2": "A01154"
+        "dept2": "A13223"
     },
     {
         "brand_group": "橋村炸雞",
         "name": "橋村台中民權店",
         "email": "kyochon05@kingza.com.tw",
-        "dept1": "A11583",
-        "dept2": "A01154"
+        "dept1": "A13223",
+        "dept2": "A13223"
     },
     {
         "brand_group": "橋村炸雞",
         "name": "橋村桃園大江店",
         "email": "kyochon06@kingza.com.tw",
-        "dept1": "A11518",
-        "dept2": "A11518"
+        "dept1": "A01154",
+        "dept2": "A01154"
     },
     {
         "brand_group": "橋村炸雞",
         "name": "橋村高雄夢時代店",
         "email": "kyochon07@kingza.com.tw",
         "dept1": "A13223",
-        "dept2": "A01154"
+        "dept2": "A13223"
+    },
+    {
+        "brand_group": "杏子豬排",
+        "name": "杏子徐匯廣場店",
+        "email": "anzu35@kingza.com.tw",
+        "dept1": "A02299",
+        "dept2": "A02299"
     }
 ]
