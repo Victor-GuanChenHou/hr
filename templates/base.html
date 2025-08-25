@@ -223,7 +223,7 @@
                 <a href="{{ url_for('index') }}">國定假日調移簽名查詢</a>
                 <a href="{{ url_for('email') }}">部門資料維護</a>
                 <a href="{{ url_for('historysearch') }}">歷史資料查詢</a>
-                <!-- <a href="{{ url_for('searchdocx') }}">年度國定假日調移同意書查詢</a> -->
+                <a href="{{ url_for('searchdocx') }}">年度國定假日調移同意書查詢</a>
             </div>
         </div>
         {% endif %}
@@ -237,10 +237,10 @@
                 {% if has_permission %}
                     <a href="{{ url_for('search') }}">國定假日調移查詢</a>
                 {% endif %}
-                <!-- <a href="{{ url_for('signdocx') }}">年度國定假日調移同意書簽名</a>
+                <a href="{{ url_for('signdocx') }}">年度國定假日調移同意書簽名</a>
                 {% if has_permission %}
                     <a href="{{ url_for('searchdocx') }}">年度國定假日調移同意書查詢</a>
-                {% endif %} -->
+                {% endif %}
                 
             </div>
         </div>

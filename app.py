@@ -95,7 +95,7 @@ def extract_docx_segments(docx_path):
 
     for para in doc.paragraphs:
         text = para.text.strip()
-        if "調移月份如下表" in text:
+        if "當日請排H班" in text:
             state = "table"
         if state == "before":
             before_table.append(text)
@@ -124,6 +124,18 @@ def insert_signature_to_docx(docx_path, sig_image_bytes, output_path):
 
     image_stream = BytesIO(sig_image_bytes)
     doc.add_picture(image_stream, width=Inches(3))  # 簽名圖寬度 3 吋
+    doc.save(output_path)
+def replace_dept_in_docx(input_path, output_path, deptname):
+    doc = Document(input_path)
+    for paragraph in doc.paragraphs:
+        if '_____________________' in paragraph.text:
+            paragraph.text = paragraph.text.replace('_____________________', deptname)
+    # 如果表格裡也有，記得處理表格
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                if '_____________________' in cell.text:
+                    cell.text = cell.text.replace('_____________________', deptname)
     doc.save(output_path)
 @app.route('/icon')
 def icon():
@@ -959,13 +971,14 @@ def get_docx():
     if 'username' not in session:
         return redirect(url_for('login'))
     username = session['username']
-    
+    deptname=session['dept_name']
     files = glob.glob(os.path.join(YEAR_UPLOAD_FOLDER, '*.docx'))
     if not files:
         return jsonify(None)
     else:
         latest_file = max(files, key=os.path.getmtime)
         data = extract_docx_segments(latest_file)
+        data['deptname']=deptname
         signature_filename = f"{username}.png"
         signature_path = os.path.join(app.config['YEAR_SIGNATURE_FOLDER'], signature_filename)
         data["has_signature"] = os.path.exists(signature_path)
@@ -1003,7 +1016,7 @@ def submit():
             return redirect(url_for('login'))
         username = session['username']
         name = session['name']
-        
+        deptname=session['dept_name']
         sig_data_url = request.form.get('signature', '')
 
         if not sig_data_url:
@@ -1021,9 +1034,12 @@ def submit():
 
         # 產出簽過名的 Word 文件
         signed_docx_path = os.path.join(app.config['YEAR_SIGNED_DOCS_FOLDER'], f"{username}_{name}.docx")
+        temp_docx_path = os.path.join(app.config['YEAR_SIGNED_DOCS_FOLDER'], f"temp_{username}_{name}.docx")
         files = glob.glob(os.path.join(YEAR_UPLOAD_FOLDER, '*.docx'))
         latest_file = max(files, key=os.path.getmtime)
-        insert_signature_to_docx(latest_file, sig_image_bytes, signed_docx_path)
+        replace_dept_in_docx(latest_file, temp_docx_path, deptname)
+        insert_signature_to_docx(temp_docx_path, sig_image_bytes, signed_docx_path)
+        os.remove(temp_docx_path)
         return jsonify({
             "status": "success"
             
@@ -1032,7 +1048,7 @@ def submit():
         #     "status": "success",
         #     "docx": f"/{signed_docx_path.replace(os.sep, '/')}"
         # })
-
+        
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)})
 @app.route('/searchdocx')

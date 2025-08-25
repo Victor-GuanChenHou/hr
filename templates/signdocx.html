@@ -107,7 +107,11 @@
 
             data.after_table.forEach(p => {
                 let input = '';
-                if (p.includes('本人以詳閱')) {
+                if (p.includes('_____________________')) {
+                    // 將段落文字中空白換成 dept
+                    p = p.replace('_____________________', data.deptname || '');
+                }
+                if (p.includes('簽名')) {
                     if (data.has_signature && data.signature_url) {
                         input = `
                             <div class="signature-section">
