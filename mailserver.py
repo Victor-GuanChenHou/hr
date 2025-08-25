@@ -56,7 +56,7 @@ def ChangeToHTML(unsigned_data):
     </head>
     <body>
     <p>以下是尚未簽核的名單，再請盡快通知並完成簽核，謝謝</p>
-    <p><a href="http://hrsignin.kingza.com.tw:4275/login">🔗 點我前往簽核系統</a></p>
+    <p><a href="http://hrsignin.kingza.com.tw/login">🔗 點我前往簽核系統</a></p>
     <p>帳號 : 員工工號</p>
     <p>密碼 : 身分證後九碼</p>
     {html_table}
