@@ -6,6 +6,7 @@ ENV = './.env'
 load_dotenv(dotenv_path=ENV)
 import paramiko
 HISTORY_FOLDER = 'history'
+TMP_FOLDER ='static/year_signed_docs'
 def mkdir_p(sftp, remote_directory):
 
     if remote_directory.startswith('./'):
@@ -69,14 +70,23 @@ sftp = ssh.open_sftp()
 sftp.chdir("hrm_signature")
 NAS_filelist = sftp.listdir()
 LOC_file_list = os.listdir(HISTORY_FOLDER)
-# # 上傳檔案
+# # 上傳history檔案
 try:
     upload(HISTORY_FOLDER,"",sftp)
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f'{now} | 上傳成功\n')
+    print(f'{now} | 上傳歷史資料成功\n')
 except:
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f'{now} | 上傳失敗\n')
+    print(f'{now} | 上傳歷史資料失敗\n')
+# # 上傳tmp檔案
+try:
+    upload(TMP_FOLDER,"",sftp)
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f'{now} | 上傳歷史資料成功\n')
+except:
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f'{now} | 上傳歷史資料失敗\n')
+
 # 關閉
 sftp.close()
 ssh.close()
