@@ -6,13 +6,12 @@ from datetime import datetime
 import os
 ENV = './.env' 
 LOG_DIR='logs'
-load_dotenv(dotenv_path=ENV)
+load_dotenv(os.path.join(os.getcwd(), ".env"))
 def get_user_info(username):
-    load_dotenv()
-    HRDB_host = os.getenv('HRDB_host')
-    HRDB_password = os.getenv('HRDB_password')
-    HRDB_uid=os.getenv('HRDB_uid')
-    HRDB_name=os.getenv('HRDB_name')
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid=os.environ.get('HRDB_uid')
+    HRDB_name=os.environ.get('HRDB_name')
     conn = pyodbc.connect(
         f"DRIVER={{ODBC Driver 17 for SQL Server}};"
         f"SERVER={HRDB_host};"
@@ -20,10 +19,11 @@ def get_user_info(username):
         f"UID={HRDB_uid};"
         f"PWD={HRDB_password};"
         "Trusted_Connection=no;"
+            
     )
     cursor = conn.cursor()
     # SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID 身分證後九碼
-    cursor.execute("SELECT EMPID, SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID, HECNAME ,DEPT_NO ,CLASS FROM HRM.dbo.HRUSER WHERE EMPID = ?", (username,))
+    cursor.execute("SELECT EMPID, SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID, HECNAME ,DEPT_NO ,INADATE,CLASS FROM HRM.dbo.HRUSER WHERE STATE='A' AND EMPID = ?", (username,))
     row = cursor.fetchone()
     
 
@@ -31,10 +31,11 @@ def get_user_info(username):
         cursor.execute("SELECT DEP_NAME,DEP_KIND FROM HRM.dbo.HRUSER_DEPT_BAS WHERE DEP_NO = ?", (row[3],))
         dep_row = cursor.fetchone()
         conn.close()
+
         if dep_row:
-            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'CLASS':row[4],'DEPT_NAME':dep_row[0],'DEPT_KIND':dep_row[1]}
+            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'INADATE':row[4],'CLASS':row[5],'DEPT_NAME':dep_row[0],'DEPT_KIND':dep_row[1]}
         else:
-            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'CLASS':row[4],'DEPT_NAME':'NOT FOUND','DEPT_KIND':'NOT FOUND'}
+            return {'username': row[0], 'password': row[1], 'name': row[2], 'DEPT_NO':row[3],'INADATE':row[4],'CLASS':row[5],'DEPT_NAME':'NOT FOUND','DEPT_KIND':'NOT FOUND'}
     else:
         return None
 def read_excel_compatible(filepath):
@@ -75,11 +76,10 @@ def loglogin(username,ip):
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(log_line)
 def find_deptchie(username):
-    load_dotenv()
-    HRDB_host = os.getenv('HRDB_host')
-    HRDB_password = os.getenv('HRDB_password')
-    HRDB_uid=os.getenv('HRDB_uid')
-    HRDB_name=os.getenv('HRDB_name')
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid=os.environ.get('HRDB_uid')
+    HRDB_name=os.environ.get('HRDB_name')
     conn = pyodbc.connect(
         f"DRIVER={{ODBC Driver 17 for SQL Server}};"
         f"SERVER={HRDB_host};"
@@ -87,6 +87,8 @@ def find_deptchie(username):
         f"UID={HRDB_uid};"
         f"PWD={HRDB_password};"
         "Trusted_Connection=no;"
+            
+        # TrustServerCertificate=yes
     )
     cursor = conn.cursor()
     cursor.execute("SELECT DEPT_NO FROM HRM.dbo.HRUSER WHERE EMPID = ?", (username,))
@@ -137,10 +139,10 @@ def get_dep_order(dep_name):
         return 99
 def docxuser():
     # 取得連線參數
-    HRDB_host = os.getenv('HRDB_host')
-    HRDB_password = os.getenv('HRDB_password')
-    HRDB_uid = os.getenv('HRDB_uid')
-    HRDB_name = os.getenv('HRDB_name')
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid = os.environ.get('HRDB_uid')
+    HRDB_name = os.environ.get('HRDB_name')
 
     # 建立資料庫連線
     conn = pyodbc.connect(
@@ -195,13 +197,13 @@ def exe_get_holidaydata():
     import warnings
     warnings.filterwarnings("ignore", category=UserWarning)
     ENV = './.env' 
-    load_dotenv(dotenv_path=ENV)
+    load_dotenv(os.path.join(os.getcwd(), ".env"))
 
-    load_dotenv()
-    HRDB_host = os.getenv('HRDB_host')
-    HRDB_password = os.getenv('HRDB_password')
-    HRDB_uid=os.getenv('HRDB_uid')
-    HRDB_name=os.getenv('HRDB_name')
+
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid=os.environ.get('HRDB_uid')
+    HRDB_name=os.environ.get('HRDB_name')
     # 資料庫連線設定
     conn = pyodbc.connect(
         'DRIVER={ODBC Driver 17 for SQL Server};'
@@ -381,3 +383,142 @@ def exe_get_holidaydata():
 
         logdata='success'
     return logdata    
+def get_dept_people(depts):
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid=os.environ.get('HRDB_uid')
+    HRDB_name=os.environ.get('HRDB_name')
+    conn = pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={HRDB_host};"
+        f"DATABASE={HRDB_name};"
+        f"UID={HRDB_uid};"
+        f"PWD={HRDB_password};"
+        "Trusted_Connection=no;"
+            
+    )
+    placeholders = ",".join("?" for _ in depts)
+
+    sql = f"""
+    SELECT DEP_NAME, DEP_KIND ,DEP_NO
+    FROM HRM.dbo.HRUSER_DEPT_BAS
+    WHERE CPNYID='42756204' AND DEP_NAME IN ({placeholders})
+    """
+    cursor = conn.cursor()
+    cursor.execute(sql, depts)
+    rows = cursor.fetchall()
+    data=[]
+    for i in range(len(rows)):
+        cursor.execute("SELECT EMPID, HECNAME ,DEPT_NO ,INADATE FROM HRM.dbo.HRUSER WHERE STATE='A' AND DEPT_NO = ?", (rows[i][2],))
+        empid = cursor.fetchall()
+        if empid:
+            for z in range(len(empid)):
+                add={'dept_no':rows[i][2],'dept_name':rows[i][0],'username':empid[z][0],'name':empid[z][1],'dates':empid[z][3]}
+                data.append(add)
+    return(data)
+def getall_empid():
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid=os.environ.get('HRDB_uid')
+    HRDB_name=os.environ.get('HRDB_name')
+    conn = pyodbc.connect(
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={HRDB_host};"
+        f"DATABASE={HRDB_name};"
+        f"UID={HRDB_uid};"
+        f"PWD={HRDB_password};"
+        "Trusted_Connection=no;"
+            
+    )
+    cursor = conn.cursor()
+    # SUBSTRING(UIDENTID, 2, LEN(UIDENTID) - 1) AS UIDENTID 身分證後九碼
+    cursor.execute("""
+        SELECT 
+            U.EMPID,
+            U.HECNAME,
+            U.DEPT_NO,
+            U.INADATE,
+            U.CLASS,
+            D.DEP_NAME,
+            D.DEP_KIND
+        FROM HRM.dbo.HRUSER AS U
+        LEFT JOIN HRM.dbo.HRUSER_DEPT_BAS AS D
+            ON U.DEPT_NO = D.DEP_NO
+        WHERE U.STATE = 'A'
+        AND U.CPNYID = '42756204'
+        AND U.DEPT_NO != ''
+    """)
+
+    rows = cursor.fetchall()
+
+    alldata = []
+    for row in rows:
+        data = {
+            'username': row[0],
+            'name': row[1],
+            'DEPT_NO': row[2],
+            'INADATE': row[3],
+            'CLASS': row[4],
+            'dept_name': row[5] if row[5] else 'NOT FOUND',
+            'dept_no': row[6] if row[6] else 'NOT FOUND'
+        }
+        alldata.append(data)
+
+    conn.close()
+    return alldata if alldata else None
+
+def docxuser_manager_mail():
+    # 取得連線參數
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid = os.environ.get('HRDB_uid')
+    HRDB_name = os.environ.get('HRDB_name')
+
+    # 建立資料庫連線
+    conn = pyodbc.connect(
+        'DRIVER={ODBC Driver 17 for SQL Server};'
+        f'SERVER={HRDB_host};'
+        f'DATABASE={HRDB_name};'
+        f'UID={HRDB_uid};'
+        f'PWD={HRDB_password};'
+    )
+    cursor = conn.cursor()
+    # SQL 查詢：取得在職 Class D 員工對應單位與身份別
+    query_classd = """
+    SELECT 
+        D.DEP_NAME AS 單位名稱,
+        
+        U.EMPID AS 員工編號,
+        U.HECNAME AS 員工姓名,
+        T.UTNAME AS 身份別,
+        D.DEP_CHIEF 主管,
+        CHIEF.EMAIL 單位主管信箱
+    FROM HRM.dbo.HRUSER U
+    LEFT JOIN HRM.dbo.HRUSER_DEPT_BAS D ON U.DEPT_NO = D.DEP_NO
+    LEFT JOIN HRM.dbo.USERTYPE T ON U.UTYPE = T.UTYPE
+    LEFT JOIN HRM.dbo.HRUSER CHIEF ON D.DEP_CHIEF = CHIEF.EMPID
+    WHERE U.STATE = 'A' AND U.Class = 'D'
+    """
+    cursor.execute(query_classd)
+    columns = [column[0] for column in cursor.description]
+
+    # 取得所有資料
+    rows = cursor.fetchall()
+
+    # 轉成 DataFrame
+    df = pd.DataFrame.from_records(rows, columns=columns)
+    # 執行查詢
+    #df = pd.read_sql(query_classd, conn)
+
+    # 關閉連線
+    conn.close()
+     # ➕ 加入排序欄位
+    df['dep_order'] = df['單位名稱'].apply(get_dep_order)
+
+    # 🔽 排序
+    df = df.sort_values(by=['dep_order', '單位名稱', '員工編號'])
+
+    # 移除排序用欄位再轉成 list[dict]
+    df = df.drop(columns=['dep_order'])
+
+    return df.to_dict(orient='records')
