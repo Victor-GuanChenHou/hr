@@ -181,9 +181,9 @@ def gettabledata_year(foldername):
             for i, row in emp_rows.iterrows():
                 # 寫入一筆資料
                 item = row[['單位名稱', '員工編號', '員工姓名', '身份別']].to_dict()
-                signature_file = os.path.join(signaturefolder, emp_id, f'row_{i}.png')
+                signature_file = os.path.join(signaturefolder,  f'{emp_id}.png')
                 if os.path.exists(signature_file):
-                    item['signature'] = f'/{YEAR_HISTORY_FOLDER}/{foldername}/year_signatures/{emp_id}/row_{i}.png'
+                    item['signature'] = f'/{YEAR_HISTORY_FOLDER}/{foldername}/year_signatures/{emp_id}.png'
                 else:
                     item['signature'] = ''  # 沒有簽名
                 display_data.append(item)
@@ -534,9 +534,10 @@ def historyyearsearch():
             for i, row in emp_rows.iterrows():
                 # 寫入一筆資料
                 item = row[['單位名稱', '員工編號', '員工姓名', '身份別']].to_dict()
-                signature_file = os.path.join(signaturefolder, emp_id, f'row_{i}.png')
+                signature_file = os.path.join(signaturefolder, f'{emp_id}.png')
                 if os.path.exists(signature_file):
-                    item['signature'] = f'/{history_path}/{foldername}/year_signatures/{emp_id}/row_{i}.png'
+                    item['signature'] = f'/{history_path}/{foldername}/year_signatures/{emp_id}.png'
+                
                 else:
                     item['signature'] = ''  # 沒有簽名
                 display_data.append(item)
@@ -1014,6 +1015,9 @@ def delet_store():
 @app.route('/history/upload_month/<path:filename>')
 def serve_history_file(filename):
     return send_from_directory('history/upload_month', filename)
+@app.route('/history/upload_year/<path:filename>')
+def serve_year_file(filename):
+    return send_from_directory('history/upload_year', filename)
 @app.route('/download_history_excel', methods=['GET'])
 def download_history_excel():
     status = request.args.get('status')
