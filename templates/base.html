@@ -41,14 +41,19 @@
             user-select: none;
         }
         .publicholiday-info {
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 10px;
             cursor: pointer;
-            user-select: none;
+            display: inline-block;
+            padding: 8px 12px;
+            /*border-radius: 8px;          /* 圓角 */*/
+            /*border: 3px solid #ccc;      /* 邊框 */*/
+            
+            transition: all 0.2s;        /* 動畫過渡 */
         }
-        
+        .publicholiday-info div {
+            font-family: "Microsoft JhengHei", sans-serif; /* 統一字型 */
+            font-size: 16px; /* 統一大小 */
+            font-weight: bold; /* 需要粗體就加 */
+        }
         .user-icon {
             width: 40px;
             height: 40px;
@@ -93,7 +98,7 @@
             display: none;
             position: absolute;
             top: 50px;
-            right: 0;
+            right: 50;
             background-color: white;
             color: #214647;
             min-width: 250px;
@@ -111,6 +116,7 @@
         }
         .publicdropdown-content a:hover {
             background-color: #f0f0f0;
+            border-color: #214647;  
         }
         .publicholiday-info.show .publicdropdown-content {
             display: block;
@@ -224,8 +230,11 @@
                 <a href="{{ url_for('email') }}">部門資料維護</a>
                 <a href="{{ url_for('historysearch') }}">歷史資料查詢</a>
                 <a href="{{ url_for('searchdocx') }}">年度國定假日調移同意書查詢</a>
+                <a href="{{ url_for('historyyearsearch') }}">年度同意書歷史資料查詢</a>
             </div>
+            
         </div>
+        
         {% endif %}
         
         {% if is_store %}
@@ -242,10 +251,17 @@
                     <a href="{{ url_for('searchdocx') }}">年度國定假日調移同意書查詢</a>
                 {% endif %}
                 
+                
             </div>
+            
         </div>
         {% endif %}
-
+        <!-- <div id="safe" class="publicholiday-info" style="margin-right: 26px;" onclick="publicholiday('safe')">
+            <div class="safe">勞工安全資料</div>
+            <div class="publicdropdown-content">
+                <a href="{{ url_for('safepage') }}">資料上傳及查詢</a>
+            </div>
+        </div> -->
         <!-- 共用的使用者資訊 -->
         <div class="user-info" onclick="toggleDropdown()">
             <div class="user-icon">👤</div>

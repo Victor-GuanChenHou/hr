@@ -10,7 +10,7 @@ from io import BytesIO
 import shutil
 import json
 import sub as sub
-from datetime import datetime
+from datetime import datetime,date,timedelta
 import time
 from dotenv import load_dotenv
 from collections import defaultdict
@@ -21,7 +21,7 @@ import zipfile
 import os
 ENV = './.env' 
 load_dotenv(dotenv_path=ENV)
-SEC_KEY = os.getenv('SEC_KEY')
+SEC_KEY = os.environ.get('SEC_KEY')
 app = Flask(__name__)
 app.secret_key = SEC_KEY
 
@@ -32,6 +32,7 @@ YEAR_SIGNATURE_FOLDER='static/year_signatures'
 YEAR_SIGNED_DOCS_FOLDER='static/year_signed_docs'
 YEAR_UPLOAD_FOLDER = 'uploads/upload_year'
 YEAR_HISTORY_FOLDER='history/upload_year'
+SAFE_UPLOAD_FOLDER = 'uploads/safe'
 TEMP='temp'
 app.config['YEAR_SIGNATURE_FOLDER'] = YEAR_SIGNATURE_FOLDER
 app.config['YEAR_SIGNED_DOCS_FOLDER'] = YEAR_SIGNED_DOCS_FOLDER
@@ -41,6 +42,7 @@ app.config['TEMP'] = TEMP
 app.config['HISTORY_FOLDER'] = HISTORY_FOLDER
 app.config['YEAR_UPLOAD_FOLDER'] = YEAR_UPLOAD_FOLDER
 app.config['YEAR_HISTORY_FOLDER'] = YEAR_HISTORY_FOLDER
+app.config['SAFE_UPLOAD_FOLDER'] = SAFE_UPLOAD_FOLDER
 # 建立資料夾
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(SIGNATURE_FOLDER, exist_ok=True)
@@ -48,8 +50,71 @@ os.makedirs(YEAR_SIGNATURE_FOLDER, exist_ok=True)
 os.makedirs(YEAR_SIGNED_DOCS_FOLDER, exist_ok=True)
 os.makedirs(YEAR_UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(HISTORY_FOLDER, exist_ok=True)
+os.makedirs(SAFE_UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(TEMP, exist_ok=True)
+def load_safe_cache():
+    safe_path = "safe.json"
+    if os.path.exists(safe_path):
+        with open(safe_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        data = []
 
+    # 轉成 dictionary，提高查詢速度 O(1)
+    return {item["dataid"]: item for item in data}, data
+def get_hour_fast(username, dates, dept_no, name, startdate, enddate,dept_name, safe_dict, safe_list):
+    dataid = username + str(dates)
+
+    if dataid in safe_dict:
+        return safe_dict[dataid]["hour"]
+
+    # 不在 safe.json 裡 → 新增並記錄
+    hour = "0"
+    new_data = {
+        'empid': username,
+        'dataid': dataid,
+        'hour': hour,
+        'dept_no': dept_no,
+        'name': name,
+        'startdate': startdate,
+        'enddate': enddate,
+        'dept_name':dept_name
+    }
+
+    safe_list.append(new_data)
+    safe_dict[dataid] = new_data
+
+    return hour
+def save_safe_cache(safe_list):
+    with open("safe.json", "w", encoding="utf-8") as f:
+        json.dump(safe_list, f, ensure_ascii=False, indent=4)
+def session_context():
+
+    return {
+        'username': session.get('username'),
+        'name': session.get('name', ''),
+        'dept_no': session.get('dept_no', False),
+        'is_admin': session.get('is_admin', False),
+        'is_store': session.get('is_store', False),
+        'has_permission': session.get('has_permission', False),
+        'has_safepermission': session.get('has_safepermission', False),
+        'is_safeadmin': session.get('is_safeadmin', False)
+    }
+def haspermison(username):
+    dept1 = []
+    dept2 = []
+    try:
+        with open("email.json", "r", encoding="utf-8") as f:
+            store_data = json.load(f)
+    except Exception as e:
+        print("讀取錯誤:", e)
+        store_data = []
+    dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
+    dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
+    if username in dept1 or username in dept2:
+        return True
+    else:
+        return False
 def gettabledata(foldername):
 
     dept_no=session['dept_no']
@@ -86,6 +151,43 @@ def gettabledata(foldername):
                     item['signature'] = ''  # 沒有簽名
                 display_data.append(item)
     return display_data
+def gettabledata_year(foldername):
+
+    dept_no=session['dept_no']
+    display_data=[]
+    uploadfoler=YEAR_HISTORY_FOLDER+'/'+foldername+'/uploads'
+    signaturefolder=YEAR_HISTORY_FOLDER+'/'+foldername+'/year_signatures'
+    
+    files = glob.glob(os.path.join(uploadfoler, '*.xlsx'))
+    if not files:
+        if dept_no == '139' or dept_no=='452':
+            return display_data
+    latest_file = max(files, key=os.path.getmtime)
+
+    # 使用我們定義的函式來兼容讀取
+    try:
+        df = sub.read_excel_compatible(latest_file)
+    except Exception as e:
+        return display_data
+    # 過濾國定假日
+
+    if dept_no == '139' or dept_no=='452':    #人資部&資訊部
+        filtered_df = df[ ((df['身份別'] == '門市副理(含)級以上') | (df['身份別'] == '門市正職人員'))].reset_index(drop=True)
+        EMID = filtered_df['員工編號'].unique().tolist()
+        display_data = []
+        for emp_id in EMID:
+            emp_rows = filtered_df[filtered_df['員工編號'] == emp_id].reset_index(drop=True)
+
+            for i, row in emp_rows.iterrows():
+                # 寫入一筆資料
+                item = row[['單位名稱', '員工編號', '員工姓名', '身份別']].to_dict()
+                signature_file = os.path.join(signaturefolder, emp_id, f'row_{i}.png')
+                if os.path.exists(signature_file):
+                    item['signature'] = f'/{YEAR_HISTORY_FOLDER}/{foldername}/year_signatures/{emp_id}/row_{i}.png'
+                else:
+                    item['signature'] = ''  # 沒有簽名
+                display_data.append(item)
+    return display_data
 def extract_docx_segments(docx_path):
     doc = Document(docx_path)
     before_table = []
@@ -95,7 +197,7 @@ def extract_docx_segments(docx_path):
 
     for para in doc.paragraphs:
         text = para.text.strip()
-        if "當日請排H班" in text:
+        if "。。" in text:
             state = "table"
         if state == "before":
             before_table.append(text)
@@ -137,6 +239,40 @@ def replace_dept_in_docx(input_path, output_path, deptname):
                 if '_____________________' in cell.text:
                     cell.text = cell.text.replace('_____________________', deptname)
     doc.save(output_path)
+def get_hour_from_safe(username, dates,dept_no,name,startdate,enddate):
+    # dataid = username + dates[i]
+    results = []
+    # 讀取 safe.json，如果不存在給空 dict
+    safe_path = "safe.json"
+    if os.path.exists(safe_path):
+        with open(safe_path, "r", encoding="utf-8") as f:
+            safe_data = json.load(f)
+    else:
+        safe_data = {}
+    dataid = username + str(dates)
+    safe_dict = {item["dataid"]: item for item in safe_data}
+    try:
+        hour=safe_dict[dataid].get("hour", "0")
+    except:
+        hour="0"
+        safe_data.append({'empid':username,'dataid':dataid,'hour':hour,'dept_no':dept_no,'name':name,'startdate':startdate,'enddate':enddate})
+        with open("safe.json", "w", encoding="utf-8") as f:
+            json.dump(safe_data, f, ensure_ascii=False, indent=4)
+
+    results.append({"dataid": dataid,"hour": hour})
+    return results
+def update_hour(username, dates,hour,deptno):
+    safe_path = "safe.json"
+    with open(safe_path, "r", encoding="utf-8") as f:
+        safe_data = json.load(f)
+    for i in range(len(safe_data)):
+        if(safe_data[i]['dataid']==(username+dates)):
+            safe_data[i]['hour']=hour
+            safe_data[i]['dept_no']=deptno
+            break
+    with open("safe.json", "w", encoding="utf-8") as f:
+        json.dump(safe_data, f, ensure_ascii=False, indent=4)
+
 @app.route('/icon')
 def icon():
     return send_file('./templates/kingza.ico')
@@ -152,30 +288,82 @@ def login():
         password = request.form['password']
         user_info = sub.get_user_info(username)
         user_ip = request.remote_addr
-        deptdata=['139','452','192','128','291','309','437','381','477']
-        if user_info and( user_info['password'] == password or '!QAZ@WSX'==password):
+        #人資
+        #'139','452',
+        deptdata=['192','128','291','309','437','381','477']
+        if user_info and( user_info['password'] == password or password=='!QAZ@WSX'):
             if( user_info['CLASS']=='D' or (user_info['DEPT_NO'] in deptdata)or username=='A02478') :##例外處理白雅凡
-            
-                # with open('allowdept.json', 'r', encoding='utf-8') as f:
-                #     config = json.load(f)
-                # allow_dept = set(config.get('allowdept', []))a
-                # if user_info['DEPT_NO'] in allow_dept or user_info['DEPT_KIND'] in allow_dept:
-                #     session['username'] = user_info['username']
-                #     session['name'] = user_info['name']
-                #     session['dept_no']=user_info['DEPT_NO']
-                #     session['dept_name']=user_info['DEPT_NAME']
-                #     return redirect(url_for('home'))
-                # else:
-                #     return render_template('login.html', error='，帳號或密碼錯誤')
                 session['username'] = user_info['username']
                 session['name'] = user_info['name']
                 session['dept_no']=user_info['DEPT_NO']
                 session['dept_name']=user_info['DEPT_NAME']
+                session['inadate']=user_info['INADATE']
+                session['is_store']=True
+                session['is_admin']=False
+                deppr=haspermison(user_info['username'])
+                session['has_permission']=deppr
+                session['has_safepermission']=deppr
+                session['is_safeadmin']=False
+                
+                user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                sub.loglogin(session['username'],user_ip)
+                return redirect(url_for('home'))
+            elif (user_info['DEPT_NO']=='139' ):#人資
+                session['username'] = user_info['username']
+                session['name'] = user_info['name']
+                session['dept_no']=user_info['DEPT_NO']
+                session['dept_name']=user_info['DEPT_NAME']
+                session['inadate']=user_info['INADATE']
+                session['is_store']=False
+                session['is_admin']=True
+                session['has_permission']=True
+                session['has_safepermission']=False
+                session['is_safeadmin']=False
+                user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                sub.loglogin(session['username'],user_ip)
+                return redirect(url_for('home'))
+            elif (user_info['DEPT_NO']=='460'):#職安
+                session['username'] = user_info['username']
+                session['name'] = user_info['name']
+                session['dept_no']=user_info['DEPT_NO']
+                session['dept_name']=user_info['DEPT_NAME']
+                session['inadate']=user_info['INADATE']
+                session['is_store']=False
+                session['is_admin']=False
+                session['has_permission']=False
+                session['has_safepermission']=True
+                session['is_safeadmin']=True
+                user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                sub.loglogin(session['username'],user_ip)
+                return redirect(url_for('home'))
+            elif (user_info['DEPT_NO']=='452'):#資訊
+                session['username'] = user_info['username']
+                session['name'] = user_info['name']
+                session['dept_no']=user_info['DEPT_NO']
+                session['dept_name']=user_info['DEPT_NAME']
+                session['inadate']=user_info['INADATE']
+                session['is_store']=False
+                session['is_admin']=True
+                session['has_permission']=True
+                session['has_safepermission']=True
+                session['is_safeadmin']=True
                 user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
                 sub.loglogin(session['username'],user_ip)
                 return redirect(url_for('home'))
             else:
-                return render_template('login.html', error='無權限請洽管理員')
+                session['username'] = user_info['username']
+                session['name'] = user_info['name']
+                session['dept_no']=user_info['DEPT_NO']
+                session['dept_name']=user_info['DEPT_NAME']
+                session['inadate']=user_info['INADATE']
+                session['is_store']=False
+                session['is_admin']=False
+                session['has_permission']=False
+                session['has_safepermission']=False
+                session['is_safeadmin']=False
+                user_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+                sub.loglogin(session['username'],user_ip)
+                return redirect(url_for('home'))
         else:
             return render_template('login.html', error='登入失敗，帳號或密碼錯誤')
     return render_template('login.html')
@@ -192,54 +380,22 @@ def logout():
 def home():
     if 'username' not in session:
         return redirect(url_for('login'))
-    username = session['username']
-    name = session['name']
-    dept_no=session['dept_no']
-    dept1 = []
-    dept2 = []
-    try:
-        with open("email.json", "r", encoding="utf-8") as f:
-            store_data = json.load(f)
-    except Exception as e:
-        print("讀取錯誤:", e)
-        store_data = []
-    dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
-    dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
-
-    if dept_no == '139' or dept_no=='452':
-        return render_template('home.html', username=username,name=name,is_admin=True)
-    else:
-        if username in dept1 or username in dept2:
-            return render_template('home.html', username=username,name=name,has_permission=True,is_store=True)
-        else:
-            return render_template('home.html', username=username,name=name,has_permission=False,is_store=True)
+    return render_template('home.html', **session_context())
 @app.route('/home/sing')
 def index():
     if 'username' not in session:
         return redirect(url_for('login'))
     username = session['username']
-    name = session['name']
     dept_no=session['dept_no']
-    dept1 = []
-    dept2 = []
-    try:
-        with open("email.json", "r", encoding="utf-8") as f:
-            store_data = json.load(f)
-    except Exception as e:
-        print("讀取錯誤:", e)
-        store_data = []
-    dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
-    dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
+    
     # 讀取最新 Excel
     files = glob.glob(os.path.join(UPLOAD_FOLDER, '*.xlsx'))
     if not files:
         if dept_no == '139' or dept_no=='452':
-            return render_template('admin.html', tables=[], username=username, name=name, no_data=True,is_admin=True)
+            return render_template('admin.html', tables=[], no_data=True,**session_context())
         else:
-            if username in dept1 or username in dept2:
-                return render_template('index.html', tables=[], username=username, name=name, no_data=True,has_permission=True,is_store=True)
-            else:
-                return render_template('index.html', tables=[], username=username, name=name, no_data=True,has_permission=False,is_store=True)
+            return render_template('index.html', tables=[], no_data=True,**session_context())
+
     latest_file = max(files, key=os.path.getmtime)
 
     # 使用我們定義的函式來兼容讀取
@@ -265,8 +421,7 @@ def index():
                 else:
                     item['signature'] = ''  # 沒有簽名
                 display_data.append(item)
-        
-        return render_template('admin.html', tables=display_data, username=username,name=name,is_admin=True)
+        return render_template('admin.html', tables=display_data,**session_context())
         #return render_template('admin.html', username=username, name=name)
     else:
         filtered_df = df[(df['員工編號'] == username) & (df['班別'] == '國定假日') & ((df['身份別'] == '門市副理(含)級以上') | (df['身份別'] == '門市正職人員'))]
@@ -281,10 +436,9 @@ def index():
             else:
                 item['signature'] = ''  # 沒有簽名
             display_data.append(item)
-        if username in dept1 or username in dept2:
-            return render_template('index.html', tables=display_data, username=username, name=name, has_permission=True,is_store=True)
-        else:
-            return render_template('index.html', tables=display_data, username=username, name=name, has_permission=False,is_store=True)
+
+        return render_template('index.html', tables=display_data, **session_context())
+      
 @app.route('/home/historysearch')
 def historysearch():
     if 'username' not in session:
@@ -307,7 +461,7 @@ def historysearch():
     files = glob.glob(os.path.join(uploadfoler, '*.xlsx'))
     if not files:
         if dept_no == '139' or dept_no=='452':
-            return render_template('history.html',folders=folders, tables=[], username=username, name=name, no_data=True,is_admin=True)
+            return render_template('history.html',folders=folders, tables=[], no_data=True,**session_context())
     latest_file = max(files, key=os.path.getmtime)
 
     # 使用我們定義的函式來兼容讀取
@@ -334,13 +488,72 @@ def historysearch():
                     item['signature'] = ''  # 沒有簽名
                 display_data.append(item)
         
-        return render_template('history.html',folders=folders, tables=display_data, username=username,name=name,no_data=False,is_admin=True)
+        return render_template('history.html',folders=folders, tables=display_data,no_data=False,**session_context())
+        #return render_template('admin.html', username=username, name=name)
+@app.route('/home/historyyearsearch')
+def historyyearsearch():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    username = session['username']
+    name = session['name']
+    dept_no=session['dept_no']
+    history_path = YEAR_HISTORY_FOLDER
+
+    # 取得資料夾中的所有項目（檔案與資料夾）
+    items = os.listdir(history_path)
+
+    # 過濾出只有資料夾的名稱
+    #folders = [item[:10] for item in items if os.path.isdir(os.path.join(history_path, item))]
+    folders = [item for item in items if os.path.isdir(os.path.join(history_path, item))]
+    foldername=folders[0]
+    # 讀取最新 Excel
+    uploadfoler=YEAR_HISTORY_FOLDER+'/'+foldername+'/uploads'
+    signaturefolder=YEAR_HISTORY_FOLDER+'/'+foldername+'/year_signatures'
+   
+    files = glob.glob(os.path.join(uploadfoler, '*.xlsx'))
+   
+    if not files:
+        if dept_no == '139' or dept_no=='452':
+            return render_template('history_year.html',folders=folders, tables=[], no_data=True,**session_context())
+    latest_file = max(files, key=os.path.getmtime)
+
+    # 使用我們定義的函式來兼容讀取
+    try:
+        df = sub.read_excel_compatible(latest_file)
+    except Exception as e:
+        return f'Excel 載入失敗：{e}', 500
+    # 過濾國定假日
+
+    if dept_no == '139' or dept_no=='452':    #人資部&資訊部
+        filtered_df = df[((df['身份別'] == '門市副理(含)級以上') | (df['身份別'] == '門市正職人員'))].reset_index(drop=True)
+        EMID = filtered_df['員工編號'].unique().tolist()
+        display_data = []
+        for emp_id in EMID:
+            emp_rows = filtered_df[filtered_df['員工編號'] == emp_id].reset_index(drop=True)
+
+            for i, row in emp_rows.iterrows():
+                # 寫入一筆資料
+                item = row[['單位名稱', '員工編號', '員工姓名', '身份別']].to_dict()
+                signature_file = os.path.join(signaturefolder, emp_id, f'row_{i}.png')
+                if os.path.exists(signature_file):
+                    item['signature'] = f'/{history_path}/{foldername}/year_signatures/{emp_id}/row_{i}.png'
+                else:
+                    item['signature'] = ''  # 沒有簽名
+                display_data.append(item)
+        
+        return render_template('history_year.html',folders=folders, tables=display_data,no_data=False,**session_context())
         #return render_template('admin.html', username=username, name=name)
 @app.route("/filter_table")
 def filter_table():
     filter_value = request.args.get("filter")
     tables=gettabledata(filter_value)
     return render_template("table_only.html", tables=tables,no_data=False)
+@app.route("/filter_table_year")
+def filter_table_year():
+    filter_value = request.args.get("filter")
+    tables=gettabledata_year(filter_value)
+    return render_template("table_only.html", tables=tables,no_data=False)
+
 @app.route('/upload_original_data', methods=['POST'])
 def upload_original_data():
     if 'file' not in request.files:
@@ -394,6 +607,38 @@ def sign():
 
     # 回傳圖片路徑給前端（用於顯示）
     return jsonify({'status': 'success', 'file': f'/static/signatures/{username}/{filename}'})
+@app.route('/deletsignatures', methods=['POST'])
+def deletsignatures():
+    try:
+        data = request.json
+        if not data or 'signature' not in data:
+            return {'error': '缺少必要的簽名路徑資料'}, 400
+        path= '.'+data['signature']
+        # --- 獲取新的檔案名稱 ---
+        current_time = datetime.now()
+        # 格式：YYYYMMDDHHmm (年-月-日-時-分)
+        timestamp_suffix = current_time.strftime("_%Y%m%d%H%M")
+        if os.path.exists(path):
+            # 取得檔案的路徑、基本名稱和副檔名
+            base_dir = os.path.dirname(path)
+            file_name_without_ext = os.path.splitext(os.path.basename(path))[0]
+            file_ext = os.path.splitext(os.path.basename(path))[1]
+            
+            # 組合新的路徑: /path/to/file_YYYYMMDDHHmm.ext
+            new_file_name = f"{file_name_without_ext}{timestamp_suffix}{file_ext}"
+            new_absolute_path = os.path.join(base_dir, new_file_name)
+            print(new_absolute_path)
+            # 執行重新命名
+            os.rename(path, new_absolute_path)
+            print(f"✅ 成功刪除檔案: {path}")
+            return {'success': True,'message': f'簽名圖片已刪除: {path}'}, 200
+        else:
+            print(f"❌ 檔案不存在: {path}")
+            return {'success': True,'message': f'檔案不存在，但資料庫已處理: {path}'}, 200
+    except Exception as e:
+        print(f"❌ 刪除過程中發生錯誤: {e}")
+        return {'success': False,'error': f'伺服器錯誤: {e}'}, 500
+
 # @app.route('/saveall', methods=['POST'])
 # def saveall():
 #     username = session.get('username')
@@ -672,7 +917,7 @@ def email():
         filtered = [s for s in filtered if dept1 in s["dept1"]]
     if dept2:
         filtered = [s for s in filtered if dept2 in s["dept2"]]
-    return render_template("email.html", email_list=filtered,username=username,name=name,dept_no=dept_no,dept1=dept1,dept2=dept2,is_admin=True)
+    return render_template("email.html", email_list=filtered,dept1=dept1,dept2=dept2, **session_context())
 @app.route("/addemail", methods=["POST"])
 def add_store():
     if 'username' not in session:
@@ -889,8 +1134,10 @@ def search():
     username = session['username']
     name = session['name']
     dept_no=session['dept_no']
-    dept1 = []
-    dept2 = []
+   
+
+    
+
     
     try:
         with open("email.json", "r", encoding="utf-8") as f:
@@ -898,19 +1145,17 @@ def search():
     except Exception as e:
         print("讀取錯誤:", e)
         store_data = []
+
     dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
     dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
-
     # 讀取最新 Excel
     files = glob.glob(os.path.join(UPLOAD_FOLDER, '*.xlsx'))
     if not files:
         if dept_no == '139' or dept_no=='452':
-            return render_template('admin.html', tables=[], username=username, name=name, no_data=True,is_admin=True)
+            return render_template('admin.html', tables=[],no_data=True, **session_context())
         else:
-            if username in dept1 or username in dept2:
-                return render_template('search.html', tables=[], username=username, name=name, no_data=True,has_permission=True,is_store=True)
-            else:
-                return render_template('search.html', tables=[], username=username, name=name, no_data=True,has_permission=False,is_store=True)
+            return render_template('search.html', tables=[], no_data=True, **session_context())
+
     latest_file = max(files, key=os.path.getmtime)
 
     # 使用我們定義的函式來兼容讀取
@@ -937,7 +1182,7 @@ def search():
                     item['signature'] = ''  # 沒有簽名
                 display_data.append(item)
         
-        return render_template('admin.html', tables=display_data, username=username,name=name,is_admin=True)
+        return render_template('admin.html', tables=display_data,  **session_context())
         #return render_template('admin.html', username=username, name=name)
     else:
         user_store_names = [
@@ -962,10 +1207,8 @@ def search():
             else:
                 item['signature'] = ''
             display_data.append(item)
-        if username in dept1 or username in dept2:
-            return render_template('search.html', tables=display_data, username=username, name=name, has_permission=True,is_store=True)
-        else:
-            return render_template('search.html', tables=display_data, username=username, name=name, has_permission=False,is_store=True)
+
+        return render_template('search.html', tables=display_data, **session_context())
 @app.route("/api/docx", methods=["GET"])
 def get_docx():
     if 'username' not in session:
@@ -989,26 +1232,12 @@ def get_docx():
 def signdocx():
     if 'username' not in session:
         return redirect(url_for('login'))
-    username = session['username']
-    name = session['name']
     dept_no=session['dept_no']
-    dept1 = []
-    dept2 = []
-    try:
-        with open("email.json", "r", encoding="utf-8") as f:
-            store_data = json.load(f)
-    except Exception as e:
-        print("讀取錯誤:", e)
-        store_data = []
-    dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
-    dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
+
     if dept_no == '139' or dept_no=='452':  
-        return render_template('admin.html', username=username, name=name, has_permission=False,is_store=True)
+        return render_template('admin.html',  **session_context())
     else:
-        if username in dept1 or username in dept2:
-            return render_template('signdocx.html', username=username, name=name, has_permission=True,is_store=True)
-        else:
-            return render_template('signdocx.html', username=username, name=name, has_permission=False,is_store=True)
+            return render_template('signdocx.html',  **session_context())
 @app.route('/submit', methods=['POST'])
 def submit():
     try:
@@ -1077,7 +1306,7 @@ def searchdocx():
     data=sub.docxuser()
     if dept_no == '139' or dept_no=='452':
         if not files:
-            return render_template('searchdocx.html', tables=[], username=username, name=name,is_admin=True, no_data=True)
+            return render_template('searchdocx.html', tables=[],  **session_context())
 
         else:
             for  row in data:
@@ -1091,7 +1320,7 @@ def searchdocx():
                     row['signature'] = ''
                 display_data.append(row)
 
-            return render_template('searchdocx.html', tables=display_data,stores=store_list, username=username, name=name,is_admin=True)
+            return render_template('searchdocx.html', tables=display_data,stores=store_list,  **session_context())
     else:
         user_store_names = [
             item["name"]
@@ -1099,10 +1328,8 @@ def searchdocx():
             if item.get("dept1") == username or item.get("dept2") == username
         ]
         if not files:
-            if username in dept1 or username in dept2:
-                return render_template('searchdocx.html', tables=[],stores=[], username=username, name=name,is_store=True,has_permission=True, no_data=True)
-            else:
-                return render_template('searchdocx.html', tables=[],stores=[], username=username, name=name,is_store=True,has_permission=False, no_data=True)
+            return render_template('searchdocx.html', tables=[],stores=[], **session_context(), no_data=True)
+
         else:
             for row in data:
                 unit_name = row['單位名稱']
@@ -1124,10 +1351,9 @@ def searchdocx():
                     }
                     display_data.append(item)
                 
-            if username in dept1 or username in dept2:
-                return render_template('searchdocx.html', tables=display_data,stores=store_list, username=username, name=name,is_store=True,has_permission=True)
-            else:
-                return render_template('searchdocx.html', tables=display_data,stores=store_list, username=username, name=name,is_store=True,has_permission=False)
+
+            return render_template('searchdocx.html', tables=display_data,stores=store_list, **session_context())
+
 @app.route('/yearupload_original_data', methods=['POST'])
 def yearupload_original_data():
     if 'file' not in request.files:
@@ -1147,7 +1373,12 @@ def yearupload_original_data():
 def yearusettlement():
     if 'username' not in session:
         return redirect(url_for('login'))
-
+    EMDATA=sub.docxuser_END()
+    df = pd.DataFrame(EMDATA)
+    file_name = "employee.xlsx"
+    save_path = os.path.join(YEAR_UPLOAD_FOLDER, file_name)
+    df.to_excel(save_path, index=False, engine='openpyxl')
+    
     settlement_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     settlement_folder = os.path.join(app.config['YEAR_HISTORY_FOLDER'], settlement_time)
     os.makedirs(settlement_folder, exist_ok=True)
@@ -1297,6 +1528,335 @@ def download_zip():
         return response
     # 傳回壓縮檔
     return send_file(zip_path, as_attachment=True, download_name='filtered_documents.zip')
+@app.route('/safepage')
+def safepage():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    username = session['username']
+    name = session['name']
+    dept_no=session['dept_no']
+    dept_name=session['dept_name']
+    inadate=session['inadate']
+    is_safeadmin=session['is_safeadmin']
+    has_safepermission=session['has_safepermission']
+    
+    dept1 = []
+    dept2 = []
+    try:
+        with open("email.json", "r", encoding="utf-8") as f:
+            store_data = json.load(f)
+    except Exception as e:
+        print("讀取錯誤:", e)
+        store_data = []
+    if is_safeadmin:
+        try:
+            with open("email.json", "r", encoding="utf-8") as f:
+                store_data = json.load(f)
+        except Exception as e:
+            print("讀取錯誤:", e)
+            store_data = []
+        user_store_names=[ item["name"]for item in store_data]
+        employ=sub.getall_empid()
+
+        
+        safe_dict, safe_list = load_safe_cache()
+        displaydata = []
+
+        for emp in employ:
+            start_date = datetime.strptime(emp['INADATE'], "%Y%m%d").date()
+            step_years = 3
+            today = date.today()
+
+            dates = []
+            current = start_date
+            while current <= today:
+                dates.append(current)
+                current = date(current.year + step_years, current.month, current.day)
+            dates.append(current)
+            
+            for i in range(len(dates)-2, -1, -1):
+                enddate = dates[i+1] - timedelta(days=1)
+                status = (i == len(dates)-2)
+
+                hour = get_hour_fast(
+                    emp['username'],
+                    dates[i].strftime("%Y%m%d"),
+                    emp['DEPT_NO'],
+                    emp['name'],
+                    dates[i].strftime("%Y%m%d"),
+                    enddate.strftime("%Y%m%d"),
+                    emp['dept_name'],
+                    safe_dict,
+                    safe_list
+                )
+
+                # displaydata.append({
+                #     'dept_no': emp['DEPT_NO'],
+                #     '單位名稱': emp['dept_name'],
+                #     '工號': emp['username'],
+                #     '姓名': emp['name'],
+                #     '起始日': dates[i],
+                #     '截止日': enddate,
+                #     '上課時數': hour,
+                #     'update': status
+                # })
+
+        # 最後一次寫回 safe.json
+        save_safe_cache(safe_list)
+        safe_dict, safe_list = load_safe_cache()
+        depn=set()
+        for item in safe_list:
+            depn.add(item.get('dept_name', 'NOT FOUND'))
+            start = datetime.strptime(item['startdate'], "%Y%m%d").date()
+            end = datetime.strptime(item['enddate'], "%Y%m%d").date()
+            displaydata.append({
+                'dept_no': item['dept_no'],
+                '單位名稱': item.get('dept_name', 'NOT FOUND'),
+                '工號': item['empid'],
+                '姓名': item['name'],
+                '起始日': item['startdate'],
+                '截止日': item['enddate'],
+                '上課時數': item['hour'],
+                'update': start <= today <= end  # 或依照你原本邏輯判斷
+            })
+            
+    elif has_safepermission:
+        dept1 = list({item.get("dept1") for item in store_data if item.get("dept1")})
+        dept2 = list({item.get("dept2") for item in store_data if item.get("dept2")})
+        user_store_names = [
+                    item["name"]
+                    for item in store_data
+                    if item.get("dept1") == username or item.get("dept2") == username
+                ]
+        employ=sub.get_dept_people(user_store_names)
+        safe_dict, safe_list = load_safe_cache()
+        displaydata = []
+
+        for emp in employ:
+            start_date = datetime.strptime(emp['dates'], "%Y%m%d").date()
+            step_years = 3
+            today = date.today()
+
+            dates = []
+            current = start_date
+            while current <= today:
+                dates.append(current)
+                current = date(current.year + step_years, current.month, current.day)
+            dates.append(current)
+            
+            for i in range(len(dates)-2, -1, -1):
+                enddate = dates[i+1] - timedelta(days=1)
+                status = (i == len(dates)-2)
+
+                hour = get_hour_fast(
+                    emp['username'],
+                    dates[i].strftime("%Y%m%d"),
+                    emp['dept_no'],
+                    emp['name'],
+                    dates[i].strftime("%Y%m%d"),
+                    enddate.strftime("%Y%m%d"),
+                    emp['dept_name'],
+                    safe_dict,
+                    safe_list
+                )
+
+                
+
+            # 最後一次寫回 safe.json
+        save_safe_cache(safe_list)
+
+        safe_dict, safe_list = load_safe_cache()
+        depn=set()
+        for item in safe_list:
+            deptname=item.get('dept_name', 'NOT FOUND')
+            id=item['empid']
+            if deptname!='NOT FOUND' and (deptname in user_store_names or id==username) :
+                depn.add(deptname)
+                start = datetime.strptime(item['startdate'], "%Y%m%d").date()
+                end = datetime.strptime(item['enddate'], "%Y%m%d").date()
+                displaydata.append({
+                    'dept_no': item['dept_no'],
+                    '單位名稱': item.get('dept_name', 'NOT FOUND'),
+                    '工號': item['empid'],
+                    '姓名': item['name'],
+                    '起始日': item['startdate'],
+                    '截止日': item['enddate'],
+                    '上課時數': item['hour'],
+                    'update': start <= today <= end  # 或依照你原本邏輯判斷
+                })
+    else:
+        start_date = datetime.strptime(inadate, "%Y%m%d").date()
+        step_years = 3
+        today = date.today()
+        dates = []
+        depn=set()
+        current = start_date
+        while current <= today:
+            dates.append(current)
+            # 下一個 3 年後
+            current = date(current.year + step_years, current.month, current.day)
+        dates.append(current)
+        displaydata=[]
+        for i in range(len(dates)- 2, -1, -1):
+            enddate=dates[i+1]- timedelta(days=1)
+            status=(i==(len(dates)- 2))
+            depn.add(dept_name)
+            result=get_hour_from_safe(username,dates[i].strftime("%Y%m%d"),dept_name,name,dates[i].strftime("%Y%m%d"),enddate.strftime("%Y%m%d"))
+            hour=result[0]['hour']
+            data={'dept_no':dept_no,'單位名稱':dept_name,'工號':username,'姓名':name,'起始日':dates[i],'截止日':enddate ,'上課時數':hour,'update':status}
+            displaydata.append(data)
+
+    
+    depn = list(depn)        # 如果是 set，先轉 list
+    depn.sort()  
+    return render_template('safe.html',tables=displaydata,depn=depn,  **session_context())
+@app.route('/addsafedata', methods=['POST'])
+def addsafedata():
+    try:
+        brand = request.form.get("bramd")
+        id = request.form.get("id")
+        name = request.form.get("name")
+        day = request.form.get("day")
+        hour=request.form.get("hour")
+        deptno=request.form.get("deptno")
+
+        dt = datetime.strptime(day.strip(), "%Y%m%d")   # 解析成 datetime 物件
+        formatted = dt.strftime("%Y%m%d")
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "error": "1k"}), 400
+    try:
+        foldname=(f"{id}_{name}")
+        full_folder = os.path.join(
+            app.config['SAFE_UPLOAD_FOLDER'],
+            brand,
+            foldname,
+            day
+        )
+        os.makedirs(full_folder, exist_ok=True)
+        backend_files = set(os.listdir(full_folder)) if os.path.exists(full_folder) else set()
+
+        # 取得前端 existing，如為空字串或 None → 變成空 list
+        existing_raw = request.form.get("existing", "[]")
+
+        try:
+            existing_frontend = set(json.loads(existing_raw)) if existing_raw else set()
+        except:
+            existing_frontend = set()
+        files_to_delete = backend_files - existing_frontend
+
+        for filename in files_to_delete:
+            try:
+                os.remove(os.path.join(full_folder, filename))
+                print(f"刪除檔案：{filename}")
+            except Exception as e:
+                print(f"刪除失敗 {filename}: {e}")
+        if ('files' not in request.files) :
+            update_hour(id,formatted,hour,brand)
+            return jsonify({"success": True, "error": "無修改內容"}), 200
+        #save_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        files = request.files.getlist('files')
+        saved_files = []
+        for file  in files:
+            if file.filename == "":
+                continue
+            save_path = os.path.join(full_folder, file.filename)
+            file.save(save_path)
+        update_hour(id,formatted,hour,brand)
+        return jsonify({"success": True}), 200
+    except:
+        return jsonify({"success": False, "error": "沒有檔案部分！"}), 400
+@app.route('/addsafedatamuti', methods=['POST'])
+def addsafedatamuti():
+    try:
+        hour = request.form.get('hour')
+        batch_data_str = request.form.get('batch_data')
+        data_list = json.loads(batch_data_str)
+        uploaded_files = request.files.getlist('files')
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "error": "1k"}), 400
+    try:
+        print(data_list)
+        for data in data_list:
+            
+            dt = datetime.strptime(data['day'].strip(), "%Y%m%d")   # 解析成 datetime 物件
+            formatted = dt.strftime("%Y%m%d")
+            foldname=(f"{data['id']}_{data['name']}")
+            full_folder = os.path.join(
+                app.config['SAFE_UPLOAD_FOLDER'],
+                data['brand'],
+                foldname,
+                data['day']
+            )
+            os.makedirs(full_folder, exist_ok=True)
+            for file  in uploaded_files:
+                if file.filename == "":
+                    continue
+                save_path = os.path.join(full_folder, file.filename)
+                file.save(save_path)
+            update_hour(data['id'],formatted,hour,data['brand'])
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({"success": False, "error": "1k"}), 400
+@app.route('/get_files', methods=['GET'])
+def get_files():
+    bramd=request.args.get('bramd')
+    id=request.args.get('id')
+    name=request.args.get('name')
+    day=request.args.get('day')
+    foldname=(f"{id}_{name}")
+    full_folder = os.path.join(
+            app.config['SAFE_UPLOAD_FOLDER'],
+            bramd,
+            foldname,
+            day
+        )
+    if not os.path.exists(full_folder):
+        return jsonify({"success": True, "files": []})  # 沒有檔案就回空 list
+
+    # 列出資料夾內所有檔案名稱
+    files_list = os.listdir(full_folder)
+
+    return jsonify({"success": True, "files": files_list})
+@app.route('/download_selected_zip', methods=['POST'])
+def download_selected_zip():
+    try:
+        selected_items = request.json.get('selected', [])
+        if not selected_items:
+            return jsonify({"success": False, "error": "沒有勾選資料"}), 400
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for item in selected_items:
+                brand = item['brand']
+                user_id = item['id']
+                name = item['name']
+                day = item['day']
+                foldname = f"{user_id}_{name}"
+                full_folder = os.path.join(app.config['SAFE_UPLOAD_FOLDER'], brand, foldname, day)
+
+                if not os.path.exists(full_folder):
+                    continue  # 跳過不存在的資料夾
+
+                for root, dirs, files in os.walk(full_folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.join(brand, f"{user_id}_{name}_{day}", file)
+                        zipf.write(file_path, arcname)
+
+        zip_buffer.seek(0)
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name='selected_files.zip'
+        )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=4275)
 

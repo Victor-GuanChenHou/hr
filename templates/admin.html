@@ -136,7 +136,23 @@
                     {% endfor %}
                     <td>
                         {% if row.signature %}
-                            <img src="{{ row.signature }}" class="signature" />
+                            <div class="editdeletdropdown" style="position: relative;">
+                                <button style='padding: 0;border: none;background: transparent;'class="signature-button" onclick="EditDeletDropdown(this)">
+                                    <img src="{{ row.signature }}" class="signature" />
+                                </button>
+                                <div class="editdeletdropdown-content"
+                                style="display:none; position:absolute; right:0; top:25px; background:#fff; border:1px solid #ccc; box-shadow:0 2px 8px rgba(0,0,0,0.15); border-radius:5px; min-width:80px; z-index:100;">
+                                    <button class="editBtn"
+                                            data-empid="{{ row.員工編號 }}"
+                                            data-signature="{{ row.signature }}"
+                                            onclick="openEditModal(this)"  
+                                            style="display:block; width:100%; padding:8px; border:none; background:none; text-align:left;">
+                                        刪除
+                                    </button>
+                                </div>
+
+                            </div>
+                            
                         {% else %}
                             <span style="color: red; font-weight: bold;">尚未簽名</span>
                         {% endif %}
@@ -179,6 +195,12 @@
             // 點擊 publicholiday-info 外部時關閉
             if (!holidayInfo.contains(event.target)) {
                 holidayInfo.classList.remove('show');
+            }
+            // 關閉所有 dropdown-content，除非點擊的是圖片或內容本身
+            if (!event.target.closest('.editdeletdropdown')) {
+                document.querySelectorAll('.editdeletdropdown-content').forEach(div => {
+                    div.style.display = 'none';
+                });
             }
         });
 
@@ -301,6 +323,57 @@
 
         function closeUploadModal() {
             document.getElementById('uploadModal').style.display = 'none';
+        }
+        function EditDeletDropdown(elem) {
+            const dropdown = elem.nextElementSibling;
+            // 關閉其他 dropdown
+            document.querySelectorAll('.editdeletdropdown-content').forEach(div => {
+                if (div !== dropdown) div.style.display = 'none';
+            });
+            // 切換當前 dropdown
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+        function openEditModal(btn) {
+            const empid = btn.dataset.empid;
+            const signature = btn.dataset.signature;
+            console.log(signature)
+            fetch("/deletsignatures", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ empid,signature})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 成功後更新表格
+                    
+                    alert("✅更新成功" );
+                    closeUploadModal();
+                    location.reload(); 
+                } else {
+                    alert("更新失敗:"+data.error );
+                    closeUploadModal();
+                    location.reload(); 
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("發生錯誤，請稍後再試。");
+                closeUploadModal();
+                location.reload(); 
+            });
+           
+        }
+        function closeEditModal() {
+            document.getElementById("EditModal").style.display = "none";
+            // 清空欄位
+            document.getElementById("Ebrand").value = "杏子豬排";
+            document.getElementById("EstoreName").value = "";
+            document.getElementById("EstoreEmail").value = "";
+            document.getElementById("edept1").value = "";
+            document.getElementById("edept2").value = "";
         }
 
     </script>

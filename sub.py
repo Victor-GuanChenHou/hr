@@ -188,6 +188,59 @@ def docxuser():
     df = df.drop(columns=['dep_order'])
 
     return df.to_dict(orient='records')
+def docxuser_END():
+    year=datetime.today().year
+    # 取得連線參數
+    HRDB_host = os.environ.get('HRDB_host')
+    HRDB_password = os.environ.get('HRDB_password')
+    HRDB_uid = os.environ.get('HRDB_uid')
+    HRDB_name = os.environ.get('HRDB_name')
+
+    # 建立資料庫連線
+    conn = pyodbc.connect(
+        'DRIVER={ODBC Driver 17 for SQL Server};'
+        f'SERVER={HRDB_host};'
+        f'DATABASE={HRDB_name};'
+        f'UID={HRDB_uid};'
+        f'PWD={HRDB_password};'
+    )
+    cursor = conn.cursor()
+    # SQL 查詢：取得在職 Class D 員工對應單位與身份別
+    query_classd = """
+    SELECT 
+        D.DEP_NAME AS 單位名稱,
+        U.EMPID AS 員工編號,
+        U.HECNAME AS 員工姓名,
+        T.UTNAME AS 身份別
+    FROM HRM.dbo.HRUSER U
+    LEFT JOIN HRM.dbo.HRUSER_DEPT_BAS D ON U.DEPT_NO = D.DEP_NO
+    LEFT JOIN HRM.dbo.USERTYPE T ON U.UTYPE = T.UTYPE
+    WHERE (U.STATE = 'A' OR U.QUITDATE LIKE '{year}%') AND U.Class = 'D'
+    """
+    cursor.execute(query_classd)
+    columns = [column[0] for column in cursor.description]
+
+    # 取得所有資料
+    rows = cursor.fetchall()
+
+    # 轉成 DataFrame
+    df = pd.DataFrame.from_records(rows, columns=columns)
+    # 執行查詢
+    #df = pd.read_sql(query_classd, conn)
+
+    # 關閉連線
+    conn.close()
+     # ➕ 加入排序欄位
+    df['dep_order'] = df['單位名稱'].apply(get_dep_order)
+
+    # 🔽 排序
+    df = df.sort_values(by=['dep_order', '單位名稱', '員工編號'])
+
+    # 移除排序用欄位再轉成 list[dict]
+    df = df.drop(columns=['dep_order'])
+
+    return df.to_dict(orient='records')
+
 def exe_get_holidaydata():
     import pyodbc
     import pandas as pd

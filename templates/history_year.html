@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+
+{% block title %}人資簽核系統{% endblock %}
+
+
+
+{% block content %}
+
+
+<div class="filter-bar">
+  <!-- 左側：篩選和匯出 -->
+  <div class="left-group">
+    <div class="select-wrapper">
+      <label for="filter">結算檔案</label>
+        <select id="filter" >
+            
+            {% for folder in folders|sort|reverse  %}
+                <option value="{{ folder }}">{{ folder }}</option>
+            {% endfor %}
+        </select>
+        
+    </div>
+    <div class="select-wrapper">
+      <label for="signatureFilter">簽名狀態</label>
+        <select id="signatureFilter" >
+            <option value="all">不限</option>
+            <option value="signed">已簽名</option>
+            <option value="unsigned">未簽名</option>
+        </select>
+    </div>
+    <div class="select-wrapper">
+        <label for="empIdInput">員工編號查詢</label>
+        <input type="text" id="empIdInput" placeholder="請輸入員工編號" />
+    </div>
+        <button class="export-btn" onclick="select()">收尋</button>
+    </div>
+
+  <!-- 右側：資料上傳與結算 -->
+    <!-- <div class="right-group">
+         <button class="export-btn" onclick="exportTable()">匯出</button>
+    </div> -->
+
+    <style>   
+    
+    .filter-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin: 20px auto;
+        width: 95%;
+    }
+
+    .left-group, .right-group {
+        align-items: flex-end;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .action-btn {
+        height: 40px;
+        padding: 0 16px;
+        font-size: 16px;
+        background-color: #6d4c93;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .action-btn:hover {
+        background-color: #563878;
+    }
+
+    .select-wrapper {
+        display: flex;
+        flex-direction: column;
+        font-family: "Microsoft JhengHei", sans-serif;
+        font-size: 16px;
+        color: #4b5563;
+    }
+
+    .select-wrapper label {
+        margin-bottom: 6px;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .select-wrapper select {
+        max-height: 120px;
+        overflow-y: auto; 
+        appearance: none;
+        padding: 10px 12px;
+        font-size: 16px;
+        width: 200px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background-color: #fff;
+        color: #374151;
+        background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23374151' stroke-width='2'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 12px;
+        cursor: pointer;
+        transition: border-color 0.2s ease-in-out;
+    }
+
+    .select-wrapper select:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+    .select-wrapper input[type="text"] {
+        padding: 10px 12px;
+        font-size: 16px;
+        width: 200px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background-color: #fff;
+        color: #374151;
+        font-family: "Microsoft JhengHei", sans-serif;
+        transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        box-sizing: border-box;
+    }
+
+    .select-wrapper input[type="text"]:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+    .export-btn {
+        height: 40px;
+        padding: 0 20px;
+        font-size: 16px;
+        background-color: #352349;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 24px;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .export-btn:hover {
+        background-color: #4b3566;
+    }
+  </style>
+</div>
+<div id="table-container">
+    {% if tables %}
+        <table id="signatureTable" style="width: 95%; margin: auto;">
+            <thead>
+                <tr>
+                    {% for col in tables[0].keys() if col != 'signature' %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                    <th>簽名(正楷中文)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in tables %}
+                <tr id="row-{{ loop.index0 }}">
+                    {% for key, value in row.items() if key != 'signature' %}
+                        <td>{{ value }}</td>
+                    {% endfor %}
+                    <td>
+                        {% if row.signature %}
+                            <img src="{{ row.signature }}" class="signature" />
+                        {% else %}
+                            <span style="color: red; font-weight: bold;">尚未簽名</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    {% else %}
+        <p style="text-align:center; margin-top: 50px; font-size: 18px; color: red;">無簽名資料，請上傳資料。</p>
+    {% endif %}
+</div>
+<!-- 簽名區 -->
+<div id="signatureModal" style="display:none; position:fixed; top:10%; left:20%; background:#fff; padding:20px; border:1px solid #000; z-index:10000;">
+    <p>請簽名：</p>
+    <canvas id="signaturePad" width="350" height="150"></canvas><br />
+    <button onclick="saveSignature()">儲存</button>
+    <button onclick="closeSignaturePad()">關閉</button>
+</div>
+
+<script>
+    
+    function toggleDropdown() {
+        document.querySelector('.user-info').classList.toggle('show');
+    }
+    function publicholiday() {
+        document.querySelector('.publicholiday-info').classList.toggle('show');
+    }
+
+    // ✅ 合併成一個 click listener 處理所有 dropdown
+    window.addEventListener('click', function(event) {
+        const userInfo = document.querySelector('.user-info');
+        const holidayInfo = document.querySelector('.publicholiday-info');
+
+        // 點擊 user-info 外部時關閉
+        if (!userInfo.contains(event.target)) {
+            userInfo.classList.remove('show');
+        }
+
+        // 點擊 publicholiday-info 外部時關閉
+        if (!holidayInfo.contains(event.target)) {
+            holidayInfo.classList.remove('show');
+        }
+    });
+
+    let currentRow = null;
+    const canvas = document.getElementById('signaturePad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    canvas.addEventListener('mousedown', e => {
+        drawing = true;
+        ctx.beginPath();
+        const rect = canvas.getBoundingClientRect();
+        ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    });
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseout', () => drawing = false);
+
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        drawing = true;
+        ctx.beginPath();
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    });
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', () => drawing = false);
+
+    function draw(e) {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        let x, y;
+        if (e.touches) {
+            const touch = e.touches[0];
+            x = touch.clientX - rect.left;
+            y = touch.clientY - rect.top;
+        } else {
+            x = e.clientX - rect.left;
+            y = e.clientY - rect.top;
+        }
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+
+    function openSignaturePad(row) {
+        currentRow = row;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('signatureModal').style.display = 'block';
+    }
+
+    function closeSignaturePad() {
+        document.getElementById('signatureModal').style.display = 'none';
+    }
+
+    function saveSignature() {
+        const whiteCanvas = document.createElement('canvas');
+        whiteCanvas.width = canvas.width;
+        whiteCanvas.height = canvas.height;
+        const whiteCtx = whiteCanvas.getContext('2d');
+        whiteCtx.fillStyle = "#FFFFFF";
+        whiteCtx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
+        whiteCtx.drawImage(canvas, 0, 0);
+        const dataURL = whiteCanvas.toDataURL("image/png");
+
+        fetch('/sign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ row: currentRow, signature: dataURL })
+        })
+        .then(res => res.json())
+        .then(data => {
+            const rowElem = document.getElementById('row-' + currentRow);
+            const td = rowElem.querySelector('td:last-child');
+            td.innerHTML = `<img src="${data.file}" class="signature" />`;
+            closeSignaturePad();
+            filterRows();  // 更新過濾結果
+        });
+    }
+    function fetchFilteredTable() {
+        const filterValue = document.getElementById("filter").value;
+        
+        // 返回 Promise，方便在外面使用 finally
+        return fetch(`/filter_table_year?filter=${encodeURIComponent(filterValue)}`)
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById("table-container").innerHTML = html;
+                filterRows();
+            })
+            .catch(err => {
+                console.error("載入失敗", err);
+                alert("載入資料失敗");
+            });
+    }
+    function showLoadingSpinner(show) {
+        document.getElementById('loadingSpinner').style.display = show ? 'block' : 'none';
+    }
+    function select(){
+        showLoadingSpinner(true);
+        fetchFilteredTable().finally(() => {
+            showLoadingSpinner(false);
+        });
+        
+
+    }
+    function filterRows() {
+        const filter = document.getElementById("signatureFilter").value;
+        const empIdInput = document.getElementById("empIdInput").value.trim().toLowerCase();
+        const rows = document.querySelectorAll("#signatureTable tbody tr");
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll("td");
+            const empIdCell = cells[1]; // 假設員工編號是第一欄
+            const currentId = empIdCell ? empIdCell.textContent.trim().toLowerCase() : "";
+
+            const lastCell = row.querySelector("td:last-child");
+            const hasImage = lastCell.querySelector("img") !== null;
+
+            // 判斷員工編號是否符合（沒輸入就直接略過這條件）
+            const empIdMatch = (empIdInput === "") || currentId.includes(empIdInput);
+
+            // 判斷簽名狀態是否符合
+            const signMatch = (filter === "all") 
+                || (filter === "signed" && hasImage) 
+                || (filter === "unsigned" && !hasImage);
+
+            // 同時符合兩個條件才顯示
+            row.style.display = (empIdMatch && signMatch) ? "" : "none";
+        });
+    }
+    
+    function exportTable() {
+        const filter = document.getElementById("filter").value;
+        const sign = document.getElementById("signatureFilter").value;
+        const label = document.getElementById("empIdInput").value; 
+        window.location.href = `/download_history_excel?status=${filter}&sign=${sign}&label=${label}`;
+    }
+    function settlement() {
+        if (confirm("確定要進行結算嗎？")) {
+            fetch('/settlement', {
+                method: 'POST'
+            }).then(res => {
+                if (res.ok) {
+                    alert("結算成功！");
+                    location.reload();
+                } else {
+                    alert("結算失敗！");
+                }
+            });
+        }
+    }
+    
+    function openUploadModal() {
+        document.getElementById('uploadModal').style.display = 'flex';
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadModal').style.display = 'none';
+    }
+
+</script>
+<div class="modal-overlay" id="uploadModal" style="display:none;">
+    <div class="modal-content">
+        <h2>上傳簽名資料</h2>
+        <form id="uploadForm" method="POST" action="/upload_original_data" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".xlsx" required />
+            <div class="modal-buttons">
+                <button type="submit" class="upload-btn">上傳</button>
+                <button type="button" class="cancel-btn" onclick="closeUploadModal()">取消</button>
+            </div>
+        </form>
+        <script>
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const formData = new FormData(form);
+            document.getElementById('loadingSpinner').style.display = 'block';
+            fetch(form.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                // ⭐️ 先把 response.json() 傳出來
+                return response.json().then(data => {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(({ ok, data }) => {
+                // 隱藏 loading spinner
+                document.getElementById('loadingSpinner').style.display = 'none';
+
+                const messageEl = document.getElementById('message');
+                messageEl.style.display = 'block';
+
+                if (ok && data.success) {
+                messageEl.style.backgroundColor = '#d4edda'; // 綠色
+                messageEl.style.color = '#155724';
+                messageEl.textContent = data.message;
+                form.reset();
+                closeUploadModal();
+                location.reload(); // 如果還是想 reload 頁面
+                } else {
+                messageEl.style.backgroundColor = '#f8d7da'; // 紅色
+                messageEl.style.color = '#721c24';
+                messageEl.textContent = '錯誤：' + (data.error || '未知錯誤');
+                form.reset();
+                closeUploadModal();
+                }
+            })
+            .catch(error => {
+                // 隱藏 loading spinner
+                document.getElementById('loadingSpinner').style.display = 'none';
+
+                const messageEl = document.getElementById('message');
+                messageEl.style.display = 'block';
+                messageEl.style.backgroundColor = '#f8d7da';
+                messageEl.style.color = '#721c24';
+                messageEl.textContent = '發生錯誤：' + error.message;
+            });
+        });
+        </script>
+    </div>
+    <style>
+        .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 30px 40px;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        width: 400px;
+        max-width: 90%;
+        font-family: "Microsoft JhengHei", sans-serif;
+    }
+
+    .modal-content h2 {
+        margin-bottom: 20px;
+        color: #352349;
+    }
+
+    .modal-content input[type="file"] {
+        display: block;
+        margin: 0 auto 20px auto;
+        font-size: 16px;
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: space-around;
+        gap: 10px;
+    }
+
+    .upload-btn, .cancel-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.2s ease-in-out;
+    }
+
+    .upload-btn {
+        background-color: #562d7b;
+        color: white;
+    }
+
+    .upload-btn:hover {
+        background-color: #3d2058;
+    }
+
+    .cancel-btn {
+        background-color: #ccc;
+        color: #333;
+    }
+
+    .cancel-btn:hover {
+        background-color: #aaa;
+    }
+
+    </style>
+</div>
+<div id="loadingSpinner" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+     z-index: 20000; color: white; font-size: 24px; background: rgba(0,0,0,0.6); padding: 20px 30px; border-radius: 8px;">
+  查詢中，請稍候...
+</div>
+<div id="message" style="display: none; margin: 10px; padding: 10px; border-radius: 6px; font-weight: bold;"></div>
+{% endblock %}
